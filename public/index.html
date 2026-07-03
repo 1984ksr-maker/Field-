@@ -27,7 +27,7 @@ canvas.placing{cursor:crosshair}
 
 /* TOP BAR */
 .bar{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:14px;
-  padding:14px 16px;pointer-events:none}
+  padding:14px 16px;pointer-events:none;background:var(--paper)}
 .mark{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
   color:var(--ink);opacity:.85}
 .mark b{font-weight:700}
@@ -714,6 +714,25 @@ function drawStation(st){
   st.level += ((amp*Math.max(heard,0.25)) - st.level)*0.18;
   const active = heard > 0.001 && st.hasAudio;
 
+  // pulsing beacon for on-air / recording stations (visible when zoomed out)
+  if(st.hasAudio || st.live){
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.004 + st.seed);
+    const beaconR = Math.max(12, reachPx * 0.08) + pulse * Math.max(6, reachPx * 0.04);
+    ctx.beginPath(); ctx.arc(s.x, s.y, beaconR, 0, Math.PI*2);
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.15 + pulse * 0.1;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // outer pulse ring
+    const ringR = beaconR + pulse * Math.max(8, reachPx * 0.05);
+    ctx.beginPath(); ctx.arc(s.x, s.y, ringR, 0, Math.PI*2);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.25 - pulse * 0.15;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
   const ringCount = 4;
   for(let i=1;i<=ringCount;i++){
     const fr = i/ringCount;
@@ -986,7 +1005,7 @@ canvas.addEventListener("pointerup", e => {
 });
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
-  state.zoom = Math.min(2.4, Math.max(0.15, state.zoom * Math.exp(-e.deltaY*0.0012)));
+  state.zoom = Math.min(2.4, Math.max(0.03, state.zoom * Math.exp(-e.deltaY*0.0012)));
 }, {passive:false});
 
 canvas.addEventListener("dragover", e => e.preventDefault());

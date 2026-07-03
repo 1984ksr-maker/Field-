@@ -31,7 +31,7 @@ const uploadPdf = multer({
 
 const uploadAudio = multer({
   dest: UPLOADS_DIR,
-  limits: { fileSize: 500 * 1024 * 1024 }
+  limits: { fileSize: 25 * 1024 * 1024 }
 });
 
 const PORT = process.env.PORT || 4567;
@@ -121,6 +121,161 @@ app.get('/api/zine/:id/pdf', (req, res) => {
     }
   }
   res.status(404).json({ error: 'not found' });
+});
+
+// ---- ADMIN DASHBOARD --------------------------------------------------------
+const ADMIN_KEY = process.env.ADMIN_KEY || 'littlefield2024';
+
+function checkAdmin(req, res, next) {
+  if (req.query.key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
+  next();
+}
+
+app.get('/admin', checkAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/api/admin/overview', checkAdmin, (req, res) => {
+  const allRooms = [];
+  for (const [id, room] of rooms) {
+    allRooms.push({
+      id, created: room.created,
+      users: [...room.users.values()].map(u => ({ id: u.id, name: u.name, socketId: u.socketId })),
+      stations: room.stations.map(s => ({
+        id: s.id, name: s.name, owner: s.owner, type: s.type,
+        hasAudio: s.hasAudio, live: s.live, audioFileId: s.audioFileId || null,
+        x: s.x, y: s.y, reach: s.reach
+      })),
+      notes: room.notes.map(n => ({
+        id: n.id, text: n.text, author: n.author, owner: n.owner, time: n.time
+      })),
+      zines: room.zines.map(z => ({
+        id: z.id, title: z.title, owner: z.owner, fileId: z.fileId
+      }))
+    });
+  }
+  let diskUsage = 0;
+  let uploadFileList = [];
+  try {
+    const files = fs.readdirSync(UPLOADS_DIR);
+    files.forEach(f => {
+      try {
+        const stat = fs.statSync(path.join(UPLOADS_DIR, f));
+        diskUsage += stat.size;
+        uploadFileList.push({ name: f, size: stat.size, created: stat.birthtime });
+      } catch(e){}
+    });
+  } catch(e){}
+  res.json({
+    rooms: allRooms,
+    diskUsageMB: Math.round(diskUsage / 1024 / 1024 * 100) / 100,
+    diskLimitMB: 1024,
+    uploadFiles: uploadFileList,
+    uptime: Math.floor(process.uptime())
+  });
+});
+
+// delete station
+app.delete('/api/admin/station/:roomId/:stationId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  const st = room.stations.find(s => s.id === req.params.stationId);
+  if (!st) return res.status(404).json({ error: 'station not found' });
+  if (st.audioFileId) {
+    const dir = fs.readdirSync(UPLOADS_DIR);
+    const match = dir.find(f => f.startsWith(st.audioFileId));
+    if (match) fs.unlink(path.join(UPLOADS_DIR, match), () => {});
+  }
+  room.stations = room.stations.filter(s => s.id !== req.params.stationId);
+  io.to(room.id).emit('station-removed', req.params.stationId);
+  res.json({ ok: true });
+});
+
+// rename station
+app.patch('/api/admin/station/:roomId/:stationId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  const st = room.stations.find(s => s.id === req.params.stationId);
+  if (!st) return res.status(404).json({ error: 'station not found' });
+  if (req.body.name) st.name = req.body.name.slice(0, 40);
+  io.to(room.id).emit('station-updated', { id: st.id, name: st.name });
+  res.json({ ok: true });
+});
+
+// delete note
+app.delete('/api/admin/note/:roomId/:noteId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  room.notes = room.notes.filter(n => n.id !== req.params.noteId);
+  io.to(room.id).emit('note-removed', req.params.noteId);
+  res.json({ ok: true });
+});
+
+// delete zine
+app.delete('/api/admin/zine/:roomId/:zineId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  const zine = room.zines.find(z => z.id === req.params.zineId);
+  if (zine && zine.fileId) {
+    fs.unlink(path.join(UPLOADS_DIR, zine.fileId + '.pdf'), () => {});
+  }
+  room.zines = room.zines.filter(z => z.id !== req.params.zineId);
+  io.to(room.id).emit('zine-removed', req.params.zineId);
+  res.json({ ok: true });
+});
+
+// kick user
+app.delete('/api/admin/user/:roomId/:userId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  const user = room.users.get(req.params.userId);
+  if (!user) return res.status(404).json({ error: 'user not found' });
+  const sock = io.sockets.sockets.get(user.socketId);
+  if (sock) { sock.emit('kicked', 'You were removed by an admin.'); sock.disconnect(true); }
+  room.users.delete(req.params.userId);
+  io.to(room.id).emit('user-left', req.params.userId);
+  io.to(room.id).emit('user-count', room.users.size);
+  res.json({ ok: true });
+});
+
+// clear entire room
+app.delete('/api/admin/room/:roomId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  room.stations.forEach(st => {
+    if (st.audioFileId) {
+      const dir = fs.readdirSync(UPLOADS_DIR);
+      const match = dir.find(f => f.startsWith(st.audioFileId));
+      if (match) fs.unlink(path.join(UPLOADS_DIR, match), () => {});
+    }
+    io.to(room.id).emit('station-removed', st.id);
+  });
+  room.notes.forEach(n => io.to(room.id).emit('note-removed', n.id));
+  room.zines.forEach(z => {
+    if (z.fileId) fs.unlink(path.join(UPLOADS_DIR, z.fileId + '.pdf'), () => {});
+    io.to(room.id).emit('zine-removed', z.id);
+  });
+  room.stations = []; room.notes = []; room.zines = [];
+  res.json({ ok: true });
+});
+
+// delete uploaded file
+app.delete('/api/admin/file/:filename', checkAdmin, (req, res) => {
+  const filePath = path.join(UPLOADS_DIR, path.basename(req.params.filename));
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'not found' });
+  fs.unlinkSync(filePath);
+  res.json({ ok: true });
+});
+
+// stop live station
+app.post('/api/admin/stop-live/:roomId/:stationId', checkAdmin, (req, res) => {
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'room not found' });
+  const st = room.stations.find(s => s.id === req.params.stationId);
+  if (!st) return res.status(404).json({ error: 'station not found' });
+  st.live = false; st.hasAudio = false; st.type = 'empty';
+  io.to(room.id).emit('station-off-air', st.id);
+  res.json({ ok: true });
 });
 
 // catch-all for SPA

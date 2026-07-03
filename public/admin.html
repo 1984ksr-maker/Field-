@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Little Field — Admin</title>
+<style>
+:root{--paper:#e9eae5;--ink:#16130f;--ink-soft:#16130f80;--ink-faint:#1613091f;
+  --live:#d62828;--signal:#1f3fcf;--broadcast:#e07b00;--note:#3a6a3a;--zine:#6b3fa0;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#1a1a1a;color:#e0e0e0;font-family:var(--sans)}
+
+/* NAV */
+.nav{display:flex;align-items:center;gap:16px;padding:16px 24px;background:#111;border-bottom:1px solid #333;position:sticky;top:0;z-index:10}
+.nav-brand{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#fff;font-weight:700}
+.nav-sub{font-family:var(--mono);font-size:10px;color:#888;letter-spacing:.08em}
+.nav-spacer{flex:1}
+.nav-link{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:#888;text-decoration:none;padding:6px 10px;border:1px solid #444;cursor:pointer;transition:all .12s}
+.nav-link:hover{color:#fff;border-color:#888}
+.nav-link.active{color:#fff;border-color:#fff}
+.uptime{font-family:var(--mono);font-size:10px;color:#666;letter-spacing:.06em}
+.auto-badge{font-family:var(--mono);font-size:9px;color:#4a4;letter-spacing:.06em}
+
+/* LAYOUT */
+.container{display:flex;min-height:calc(100vh - 50px)}
+.sidebar{width:220px;background:#151515;border-right:1px solid #333;padding:16px 0;flex-shrink:0;overflow-y:auto}
+.main{flex:1;padding:24px;overflow-y:auto}
+
+/* SIDEBAR */
+.sb-section{padding:0 16px;margin-bottom:20px}
+.sb-title{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#666;margin-bottom:8px}
+.sb-stat{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-family:var(--mono);font-size:11px}
+.sb-stat .val{font-weight:700;color:#fff}
+.sb-stat .lbl{color:#888;font-size:10px}
+.disk-bar{height:6px;background:#333;border-radius:3px;margin-top:8px;overflow:hidden}
+.disk-fill{height:100%;border-radius:3px;transition:width .3s}
+.disk-text{font-family:var(--mono);font-size:9px;color:#888;margin-top:4px;text-align:right}
+
+.tab-list{padding:0 12px;margin-bottom:16px}
+.tab{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-radius:4px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#888;transition:all .1s;margin-bottom:2px}
+.tab:hover{background:#222;color:#ccc}
+.tab.active{background:#2a2a2a;color:#fff}
+.tab .count{margin-left:auto;font-size:9px;background:#333;color:#aaa;padding:1px 5px;border-radius:8px}
+.tab .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* CARDS */
+.card{background:#222;border:1px solid #333;border-radius:6px;margin-bottom:12px;overflow:hidden}
+.card-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #333}
+.card-title{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#aaa;font-weight:600}
+.card-count{font-family:var(--mono);font-size:9px;color:#666;margin-left:auto}
+.card-actions{display:flex;gap:6px;margin-left:auto}
+
+.row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #2a2a2a;transition:background .1s}
+.row:last-child{border-bottom:none}
+.row:hover{background:#2a2a2a}
+.row .info{flex:1;min-width:0}
+.row .name{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;color:#e0e0e0}
+.row .meta{font-family:var(--mono);font-size:9px;color:#666;letter-spacing:.04em;margin-top:3px}
+.row .note-text{font-size:12px;line-height:1.5;color:#ccc;max-width:500px;word-break:break-word}
+
+.badge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:3px;flex-shrink:0;font-weight:600}
+.badge-live{background:#d6282830;color:#ff4444}
+.badge-recording{background:#1f3fcf30;color:#6688ff}
+.badge-broadcast{background:#e07b0030;color:#ff9933}
+.badge-empty{background:#ffffff10;color:#666}
+.badge-online{background:#22883330;color:#4a4}
+
+.btn{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 10px;border:1px solid;border-radius:3px;background:transparent;cursor:pointer;
+  flex-shrink:0;transition:all .12s}
+.btn-danger{color:#d62828;border-color:#d6282860}
+.btn-danger:hover{background:#d62828;color:#fff}
+.btn-warn{color:#e07b00;border-color:#e07b0060}
+.btn-warn:hover{background:#e07b00;color:#fff}
+.btn-action{color:#6688ff;border-color:#6688ff60}
+.btn-action:hover{background:#6688ff;color:#fff}
+.btn-play{color:#4a4;border-color:#4a460}
+.btn-play:hover{background:#4a4;color:#fff}
+
+.empty-msg{padding:20px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:#555;letter-spacing:.06em}
+
+/* FILE ROW */
+.file-size{font-family:var(--mono);font-size:10px;color:#888;min-width:60px;text-align:right}
+.file-date{font-family:var(--mono);font-size:9px;color:#555;min-width:80px}
+audio{height:28px;max-width:200px;flex-shrink:0}
+
+/* ROOM HEADER */
+.room-header{display:flex;align-items:center;gap:12px;padding:16px 0 8px;margin-bottom:8px;border-bottom:1px solid #333}
+.room-name{font-family:var(--mono);font-size:13px;letter-spacing:.1em;font-weight:700;color:#fff}
+.room-meta{font-family:var(--mono);font-size:10px;color:#666}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .container{flex-direction:column}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid #333;padding:12px 0}
+  .main{padding:16px}
+  .nav{padding:12px 16px;flex-wrap:wrap}
+  .row{flex-wrap:wrap;gap:8px}
+  audio{max-width:100%;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <span class="nav-brand">Little Field</span>
+  <span class="nav-sub">admin dashboard</span>
+  <span class="nav-spacer"></span>
+  <span class="uptime" id="uptime"></span>
+  <span class="auto-badge" id="autoLabel"></span>
+  <span class="nav-link" onclick="load()">refresh</span>
+  <span class="nav-link" id="autoToggle" onclick="toggleAuto()">auto: off</span>
+</div>
+
+<div class="container">
+  <div class="sidebar">
+    <div class="sb-section">
+      <div class="sb-title">overview</div>
+      <div class="sb-stat"><span class="lbl">rooms</span><span class="val" id="sRooms">0</span></div>
+      <div class="sb-stat"><span class="lbl">users</span><span class="val" id="sUsers">0</span></div>
+      <div class="sb-stat"><span class="lbl">stations</span><span class="val" id="sStations">0</span></div>
+      <div class="sb-stat"><span class="lbl">notes</span><span class="val" id="sNotes">0</span></div>
+      <div class="sb-stat"><span class="lbl">zines</span><span class="val" id="sZines">0</span></div>
+      <div class="sb-stat"><span class="lbl">files</span><span class="val" id="sFiles">0</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">storage</div>
+      <div class="disk-bar"><div class="disk-fill" id="diskFill"></div></div>
+      <div class="disk-text" id="diskText">0 / 1024 MB</div>
+    </div>
+    <div class="tab-list" id="tabList">
+      <div class="tab active" data-tab="rooms" onclick="switchTab('rooms')">
+        <span class="dot" style="background:#fff"></span> Rooms <span class="count" id="tRooms">0</span>
+      </div>
+      <div class="tab" data-tab="files" onclick="switchTab('files')">
+        <span class="dot" style="background:#888"></span> Files <span class="count" id="tFiles">0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="empty-msg">loading...</div>
+  </div>
+</div>
+
+<script>
+const key = new URLSearchParams(location.search).get('key');
+let currentTab = 'rooms';
+let autoRefresh = false;
+let autoTimer = null;
+let cachedData = null;
+
+async function api(method, url, body) {
+  const opts = { method, headers: {} };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(url + (url.includes('?') ? '&' : '?') + 'key=' + key, opts);
+  return r.json();
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function fmtUptime(sec) {
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  render();
+}
+
+function toggleAuto() {
+  autoRefresh = !autoRefresh;
+  document.getElementById('autoToggle').textContent = 'auto: ' + (autoRefresh ? 'on' : 'off');
+  document.getElementById('autoToggle').classList.toggle('active', autoRefresh);
+  document.getElementById('autoLabel').textContent = autoRefresh ? 'refreshing every 5s' : '';
+  if (autoRefresh) { autoTimer = setInterval(load, 5000); }
+  else { clearInterval(autoTimer); autoTimer = null; }
+}
+
+async function load() {
+  try {
+    cachedData = await api('GET', '/api/admin/overview');
+    updateSidebar();
+    render();
+  } catch(e) {
+    document.getElementById('main').innerHTML = '<div class="empty-msg">failed to load — check your admin key</div>';
+  }
+}
+
+function updateSidebar() {
+  const d = cachedData;
+  const totalUsers = d.rooms.reduce((s,r) => s + r.users.length, 0);
+  const totalStations = d.rooms.reduce((s,r) => s + r.stations.length, 0);
+  const totalNotes = d.rooms.reduce((s,r) => s + r.notes.length, 0);
+  const totalZines = d.rooms.reduce((s,r) => s + (r.zines||[]).length, 0);
+  document.getElementById('sRooms').textContent = d.rooms.length;
+  document.getElementById('sUsers').textContent = totalUsers;
+  document.getElementById('sStations').textContent = totalStations;
+  document.getElementById('sNotes').textContent = totalNotes;
+  document.getElementById('sZines').textContent = totalZines;
+  document.getElementById('sFiles').textContent = d.uploadFiles.length;
+  document.getElementById('tRooms').textContent = d.rooms.length;
+  document.getElementById('tFiles').textContent = d.uploadFiles.length;
+  document.getElementById('uptime').textContent = 'up ' + fmtUptime(d.uptime);
+
+  const pct = d.diskLimitMB > 0 ? (d.diskUsageMB / d.diskLimitMB * 100) : 0;
+  const fill = document.getElementById('diskFill');
+  fill.style.width = Math.min(100, pct).toFixed(1) + '%';
+  fill.style.background = pct > 80 ? '#d62828' : pct > 50 ? '#e07b00' : '#4a4';
+  document.getElementById('diskText').textContent = d.diskUsageMB + ' / ' + d.diskLimitMB + ' MB';
+}
+
+function render() {
+  if (!cachedData) return;
+  if (currentTab === 'rooms') renderRooms();
+  else if (currentTab === 'files') renderFiles();
+}
+
+function renderRooms() {
+  const d = cachedData;
+  if (d.rooms.length === 0) {
+    document.getElementById('main').innerHTML = '<div class="empty-msg">no active rooms — waiting for someone to join</div>';
+    return;
+  }
+  let html = '';
+  d.rooms.forEach(room => {
+    html += `<div class="room-header">
+      <span class="room-name">${esc(room.id)}</span>
+      <span class="room-meta">${room.users.length} users · ${room.stations.length} stations · ${room.notes.length} notes</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-danger" onclick="clearRoom('${esc(room.id)}')">clear all</button>
+    </div>`;
+
+    // USERS
+    html += `<div class="card"><div class="card-header"><span class="card-title">users online</span><span class="card-count">${room.users.length}</span></div>`;
+    if (room.users.length === 0) { html += '<div class="empty-msg">no users</div>'; }
+    room.users.forEach(u => {
+      html += `<div class="row">
+        <span class="badge badge-online">online</span>
+        <div class="info"><div class="name">${esc(u.name)}</div><div class="meta">id: ${u.id}</div></div>
+        <button class="btn btn-warn" onclick="kickUser('${esc(room.id)}','${u.id}')">kick</button>
+      </div>`;
+    });
+    html += '</div>';
+
+    // STATIONS
+    html += `<div class="card"><div class="card-header"><span class="card-title">stations</span><span class="card-count">${room.stations.length}</span></div>`;
+    if (room.stations.length === 0) { html += '<div class="empty-msg">no stations</div>'; }
+    room.stations.forEach(st => {
+      const badgeClass = st.live ? (st.type === 'broadcast' ? 'badge-broadcast' : 'badge-live') :
+                         st.hasAudio ? 'badge-recording' : 'badge-empty';
+      const badgeText = st.live ? (st.type === 'broadcast' ? 'broadcast' : 'on air') :
+                        st.hasAudio ? 'recording' : 'empty';
+      let actions = `<button class="btn btn-action" onclick="renameStation('${esc(room.id)}','${st.id}')">rename</button>`;
+      if (st.live) actions += `<button class="btn btn-warn" onclick="stopLive('${esc(room.id)}','${st.id}')">stop live</button>`;
+      if (st.audioFileId) actions += `<audio controls preload="none" src="/api/audio/${st.audioFileId}"></audio>`;
+      actions += `<button class="btn btn-danger" onclick="delStation('${esc(room.id)}','${st.id}')">remove</button>`;
+      html += `<div class="row">
+        <span class="badge ${badgeClass}">${badgeText}</span>
+        <div class="info">
+          <div class="name">${esc(st.name)}</div>
+          <div class="meta">id: ${st.id} · owner: ${st.owner} · pos: ${st.x},${st.y} · reach: ${st.reach}${st.audioFileId ? ' · file: '+st.audioFileId : ''}</div>
+        </div>
+        ${actions}
+      </div>`;
+    });
+    html += '</div>';
+
+    // NOTES
+    html += `<div class="card"><div class="card-header"><span class="card-title">notes</span><span class="card-count">${room.notes.length}</span></div>`;
+    if (room.notes.length === 0) { html += '<div class="empty-msg">no notes</div>'; }
+    room.notes.forEach(n => {
+      html += `<div class="row">
+        <div class="info">
+          <div class="note-text">${esc(n.text)}</div>
+          <div class="meta">by ${esc(n.author)} · ${n.time} · id: ${n.id}</div>
+        </div>
+        <button class="btn btn-danger" onclick="delNote('${esc(room.id)}','${n.id}')">remove</button>
+      </div>`;
+    });
+    html += '</div>';
+
+    // ZINES
+    if (room.zines && room.zines.length) {
+      html += `<div class="card"><div class="card-header"><span class="card-title">zines</span><span class="card-count">${room.zines.length}</span></div>`;
+      room.zines.forEach(z => {
+        html += `<div class="row">
+          <span class="badge" style="background:#6b3fa030;color:#b088dd">zine</span>
+          <div class="info">
+            <div class="name">${esc(z.title)}</div>
+            <div class="meta">id: ${z.id} · owner: ${z.owner}</div>
+          </div>
+          <button class="btn btn-danger" onclick="delZine('${esc(room.id)}','${z.id}')">remove</button>
+        </div>`;
+      });
+      html += '</div>';
+    }
+  });
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderFiles() {
+  const files = cachedData.uploadFiles;
+  let html = `<div class="card"><div class="card-header"><span class="card-title">uploaded files</span><span class="card-count">${files.length} files · ${cachedData.diskUsageMB} MB</span></div>`;
+  if (files.length === 0) { html += '<div class="empty-msg">no files uploaded</div>'; }
+  files.sort((a,b) => new Date(b.created) - new Date(a.created));
+  files.forEach(f => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const isAudio = ['mp3','wav','ogg','webm','m4a','aac'].includes(ext);
+    const fileId = f.name.replace(/\.[^.]+$/, '');
+    html += `<div class="row">
+      <span class="badge" style="background:#ffffff10;color:#888">${ext}</span>
+      <div class="info">
+        <div class="name">${esc(f.name)}</div>
+        <div class="meta">${new Date(f.created).toLocaleString()}</div>
+      </div>
+      <span class="file-size">${fmtSize(f.size)}</span>
+      ${isAudio ? `<audio controls preload="none" src="/api/audio/${fileId}"></audio>` : ''}
+      <button class="btn btn-danger" onclick="delFile('${esc(f.name)}')">delete</button>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('main').innerHTML = html;
+}
+
+// ACTIONS
+async function delStation(roomId, stationId) {
+  if (!confirm('Remove this station and its audio?')) return;
+  await api('DELETE', `/api/admin/station/${roomId}/${stationId}`);
+  load();
+}
+async function delNote(roomId, noteId) {
+  if (!confirm('Remove this note?')) return;
+  await api('DELETE', `/api/admin/note/${roomId}/${noteId}`);
+  load();
+}
+async function delZine(roomId, zineId) {
+  if (!confirm('Remove this zine and its PDF?')) return;
+  await api('DELETE', `/api/admin/zine/${roomId}/${zineId}`);
+  load();
+}
+async function kickUser(roomId, userId) {
+  if (!confirm('Kick this user?')) return;
+  await api('DELETE', `/api/admin/user/${roomId}/${userId}`);
+  load();
+}
+async function clearRoom(roomId) {
+  if (!confirm('Clear ALL content in this room? (stations, notes, zines and their files)')) return;
+  await api('DELETE', `/api/admin/room/${roomId}`);
+  load();
+}
+async function stopLive(roomId, stationId) {
+  await api('POST', `/api/admin/stop-live/${roomId}/${stationId}`);
+  load();
+}
+async function renameStation(roomId, stationId) {
+  const name = prompt('New station name:');
+  if (!name) return;
+  await api('PATCH', `/api/admin/station/${roomId}/${stationId}`, { name });
+  load();
+}
+async function delFile(filename) {
+  if (!confirm('Delete file: ' + filename + '?')) return;
+  await api('DELETE', `/api/admin/file/${filename}`);
+  load();
+}
+
+load();
+</script>
+</body>
+</html>
