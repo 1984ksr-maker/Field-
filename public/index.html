@@ -980,7 +980,7 @@ function openSubversiveRadio() {
   });
   w.body.innerHTML = `
     <div class="player-display">
-      <div class="player-title-scroll">Subversive Radio — We Are Born Free</div>
+      <div class="player-title-scroll">Subversive Radio</div>
       <div class="player-time">LIVE</div>
     </div>
     <div class="player-controls">
@@ -992,7 +992,7 @@ function openSubversiveRadio() {
       vol <input type="range" min="0" max="100" value="80" oninput="radioVol(this.value)">
     </div>`;
   ensureAudio();
-  const audio = new Audio('https://radio.subversive-radio.org/stream');
+  const audio = new Audio('/api/radio/stream');
   audio.volume = 0.8;
   w._audio = audio;
   audio.play().catch(() => {});

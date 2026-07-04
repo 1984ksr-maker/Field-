@@ -291,6 +291,30 @@ app.get('/api/admin/download-all', checkAdmin, (req, res) => {
   archive.finalize();
 });
 
+// proxy subversive radio stream to avoid CORS
+app.get('/api/radio/stream', (req, res) => {
+  const https = require('https');
+  const url = 'https://stream.laut.fm/subversive';
+  const proxyReq = https.get(url, { headers: { 'User-Agent': 'LittleField/1.0' } }, proxyRes => {
+    if (proxyRes.statusCode === 302 || proxyRes.statusCode === 301) {
+      const redirect = proxyRes.headers.location;
+      const rReq = https.get(redirect, { headers: { 'User-Agent': 'LittleField/1.0' } }, rRes => {
+        res.setHeader('Content-Type', rRes.headers['content-type'] || 'audio/mpeg');
+        res.setHeader('Cache-Control', 'no-cache');
+        rRes.pipe(res);
+      });
+      rReq.on('error', () => res.status(502).json({ error: 'stream unavailable' }));
+      req.on('close', () => rReq.destroy());
+    } else {
+      res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'audio/mpeg');
+      res.setHeader('Cache-Control', 'no-cache');
+      proxyRes.pipe(res);
+    }
+  });
+  proxyReq.on('error', () => res.status(502).json({ error: 'stream unavailable' }));
+  req.on('close', () => proxyReq.destroy());
+});
+
 // catch-all for SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
