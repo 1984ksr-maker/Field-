@@ -229,6 +229,8 @@ html,body{height:100%;overflow:hidden;background:var(--desktop);font-family:var(
     <div class="start-sep"></div>
     <div class="start-item contributor-only" onclick="doAction('zine')"><span class="si-icon">&#128214;</span> Upload Zine (PDF)</div>
     <div class="start-sep"></div>
+    <div class="start-item" onclick="doAction('radio')"><span class="si-icon">&#128225;</span> Subversive Radio</div>
+    <div class="start-sep"></div>
     <div class="start-item" onclick="doAction('about')"><span class="si-icon">&#8505;</span> About</div>
   </div>
 </div>
@@ -524,7 +526,7 @@ function doAction(action) {
   document.getElementById('startMenu').classList.remove('open');
   document.getElementById('startBtn').classList.remove('pressed');
 
-  if (state.role === 'listener' && action !== 'about') return;
+  if (state.role === 'listener' && !['about','radio'].includes(action)) return;
 
   switch (action) {
     case 'note': openNoteComposer(); break;
@@ -532,6 +534,7 @@ function doAction(action) {
     case 'upload': document.getElementById('audioFileInput').click(); break;
     case 'live': goLive(); break;
     case 'zine': document.getElementById('zineFileInput').click(); break;
+    case 'radio': openSubversiveRadio(); break;
     case 'about': openAbout(); break;
   }
 }
@@ -941,6 +944,52 @@ function createZineFromServer(z) {
     }
   });
   w.body.innerHTML = `<iframe src="/api/zine/${z.id}/pdf"></iframe>`;
+}
+
+// ---- SUBVERSIVE RADIO -------------------------------------------------------
+function openSubversiveRadio() {
+  if (wins.has('_radio')) { focusWin('_radio'); return; }
+  const w = createWin({
+    id: '_radio', title: 'Subversive Radio', type: 'player', extraClass: 'player',
+    x: 100 + Math.random() * 300, y: 80 + Math.random() * 200,
+    onClose: () => {
+      if (w._audio) { w._audio.pause(); w._audio.src = ''; }
+      removeWin('_radio');
+    }
+  });
+  w.body.innerHTML = `
+    <div class="player-display">
+      <div class="player-title-scroll">Subversive Radio — We Are Born Free</div>
+      <div class="player-time">LIVE</div>
+    </div>
+    <div class="player-controls">
+      <button onclick="radioCmd('play')" title="Play">&#9654;</button>
+      <button onclick="radioCmd('pause')" title="Pause">||</button>
+      <button onclick="radioCmd('stop')" title="Stop">&#9632;</button>
+    </div>
+    <div class="player-vol">
+      vol <input type="range" min="0" max="100" value="80" oninput="radioVol(this.value)">
+    </div>`;
+  ensureAudio();
+  const audio = new Audio('https://radio.subversive-radio.org/stream');
+  audio.volume = 0.8;
+  w._audio = audio;
+  audio.play().catch(() => {});
+}
+
+function radioCmd(cmd) {
+  const w = wins.get('_radio');
+  if (!w || !w._audio) return;
+  switch (cmd) {
+    case 'play': w._audio.play().catch(() => {}); break;
+    case 'pause': w._audio.pause(); break;
+    case 'stop': w._audio.pause(); w._audio.currentTime = 0; break;
+  }
+}
+
+function radioVol(val) {
+  const w = wins.get('_radio');
+  if (w && w._audio) w._audio.volume = val / 100;
 }
 
 // ---- ABOUT ------------------------------------------------------------------
