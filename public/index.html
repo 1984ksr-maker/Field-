@@ -168,6 +168,28 @@ html,body{height:100%;overflow:hidden;background:var(--desktop);font-family:var(
 .ctx-item{padding:4px 20px;font-size:11px;cursor:pointer}
 .ctx-item:hover{background:var(--win-title);color:#fff}
 
+/* LIVE INDICATOR (taskbar) */
+.live-notify{display:none;align-items:center;gap:4px;padding:0 8px;height:24px;cursor:pointer;
+  border:2px solid;border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
+  background:#1a1a1a;color:#ff3333;font-family:var(--mono);font-size:10px;font-weight:700;
+  animation:live-pulse 1.5s infinite;white-space:nowrap;position:relative}
+.live-notify.visible{display:flex}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#ff0000;animation:dot-blink .8s infinite}
+@keyframes live-pulse{0%,100%{box-shadow:0 0 0 0 #ff000040}50%{box-shadow:0 0 6px 2px #ff000060}}
+@keyframes dot-blink{0%,100%{opacity:1}50%{opacity:.3}}
+.live-count{background:#ff0000;color:#fff;border-radius:8px;padding:0 4px;font-size:8px;margin-left:2px;min-width:12px;text-align:center}
+.live-dropdown{position:absolute;bottom:28px;right:0;min-width:200px;background:var(--win-face);
+  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
+  box-shadow:2px 2px 0 #00000040;display:none;z-index:500}
+.live-dropdown.open{display:block}
+.live-dropdown-title{padding:4px 8px;background:linear-gradient(90deg,#aa0000,#cc4400);color:#fff;font-size:10px;font-weight:700}
+.live-dropdown-item{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid #ddd}
+.live-dropdown-item:last-child{border-bottom:none}
+.live-dropdown-item:hover{background:#d4d4d4}
+.live-dropdown-item .ld-dot{width:6px;height:6px;border-radius:50%;background:#ff0000;animation:dot-blink .8s infinite;flex-shrink:0}
+.live-dropdown-item .ld-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-dropdown-item .ld-listen{font-size:9px;color:#fff;background:#aa0000;padding:2px 6px;border-radius:2px;flex-shrink:0}
+
 /* SCROLL */
 ::-webkit-scrollbar{width:14px}
 ::-webkit-scrollbar-track{background:var(--win-face);border:1px solid var(--win-border-dark)}
@@ -212,6 +234,10 @@ html,body{height:100%;overflow:hidden;background:var(--desktop);font-family:var(
   </button>
   <div class="task-sep"></div>
   <div class="task-items" id="taskItems"></div>
+  <div class="live-notify" id="liveNotify" onclick="toggleLiveDropdown(event)">
+    <span class="live-dot"></span> LIVE <span class="live-count" id="liveCount">0</span>
+    <div class="live-dropdown" id="liveDropdown"></div>
+  </div>
   <div class="task-clock">
     <span id="clock">00:00</span>
     <span class="task-users" id="taskUsers">0</span>
@@ -256,6 +282,7 @@ let focusedWin = null;
 let startOpen = false;
 let audioCtx = null;
 let userCount = 0;
+const liveStations = new Map();
 
 function ensureAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -304,7 +331,9 @@ function connectSocket() {
     updateTaskUsers();
     data.stations.forEach(st => {
       if (!wins.has(st.id)) createPlayerFromServer(st);
+      if (st.live) liveStations.set(st.id, { id: st.id, name: st.name || 'untitled' });
     });
+    updateLiveNotify();
     data.notes.forEach(n => {
       if (!wins.has(n.id)) createNoteFromServer(n);
     });
@@ -325,7 +354,7 @@ function connectSocket() {
   socket.on('station-placed', st => {
     if (!wins.has(st.id)) createPlayerFromServer(st);
   });
-  socket.on('station-removed', id => { removeWin(id); });
+  socket.on('station-removed', id => { removeWin(id); liveStations.delete(id); updateLiveNotify(); });
   socket.on('station-audio', data => {
     const w = wins.get(data.stationId);
     if (w && data.audioFileId) {
@@ -336,10 +365,14 @@ function connectSocket() {
   socket.on('station-live', data => {
     const w = wins.get(data.stationId);
     if (w) { w.live = true; w.type = 'live'; updateWinTitle(w); }
+    liveStations.set(data.stationId, { id: data.stationId, name: w ? (w.name || 'untitled') : 'live station' });
+    updateLiveNotify();
   });
   socket.on('station-off-air', id => {
     const w = wins.get(id);
     if (w) { w.live = false; w.type = w.audioFileId ? 'recording' : 'empty'; updateWinTitle(w); }
+    liveStations.delete(id);
+    updateLiveNotify();
   });
   socket.on('station-broadcast', data => {
     const w = wins.get(data.stationId);
@@ -1016,6 +1049,50 @@ function openAbout() {
       <span style="font-size:9px;color:#888">built with love &amp; socket.io</span>
     </div>`;
 }
+
+// ---- LIVE NOTIFY ------------------------------------------------------------
+function updateLiveNotify() {
+  const el = document.getElementById('liveNotify');
+  const count = liveStations.size;
+  el.classList.toggle('visible', count > 0);
+  document.getElementById('liveCount').textContent = count;
+}
+
+function toggleLiveDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('liveDropdown');
+  const isOpen = dd.classList.toggle('open');
+  if (!isOpen) return;
+
+  let html = '<div class="live-dropdown-title">&#9679; Live Now</div>';
+  if (liveStations.size === 0) {
+    html += '<div style="padding:8px;font-size:10px;color:#888;text-align:center">No one is live</div>';
+  } else {
+    liveStations.forEach(st => {
+      html += `<div class="live-dropdown-item" onclick="tuneLive('${st.id}')">
+        <span class="ld-dot"></span>
+        <span class="ld-name">${esc(st.name)}</span>
+        <span class="ld-listen">LISTEN</span>
+      </div>`;
+    });
+  }
+  dd.innerHTML = html;
+}
+
+function tuneLive(stationId) {
+  document.getElementById('liveDropdown').classList.remove('open');
+  const w = wins.get(stationId);
+  if (w) {
+    w.el.style.display = 'flex';
+    focusWin(stationId);
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.live-notify')) {
+    document.getElementById('liveDropdown').classList.remove('open');
+  }
+});
 
 // ---- HELPERS ----------------------------------------------------------------
 function esc(s) {
