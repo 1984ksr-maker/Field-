@@ -3,1932 +3,971 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#e9eae5">
-<meta name="apple-mobile-web-app-status-bar-style" content="#e9eae5">
+<meta name="theme-color" content="#c0c0c0">
 <title>Little Field</title>
 <style>
 :root{
-  --paper:#e9eae5;
-  --ink:#16130f;
-  --ink-soft:#16130f80;
-  --ink-faint:#1613091f;
-  --signal:#1f3fcf;
-  --live:#d62828;
-  --broadcast:#e07b00;
-  --note:#3a6a3a;
-  --zine:#6b3fa0;
-  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --win-bg:#c0c0c0;
+  --win-title:#000080;
+  --win-title-text:#fff;
+  --win-border-light:#dfdfdf;
+  --win-border-dark:#808080;
+  --win-border-darker:#404040;
+  --win-face:#c0c0c0;
+  --desktop:#008080;
+  --live:#cc0000;
+  --rec:#cc4400;
+  --note-bg:#ffffe1;
+  --mono:'Courier New',Courier,monospace;
+  --sys:'Segoe UI','Tahoma','Geneva',sans-serif;
+  --taskbar-h:36px;
 }
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);
-  font-family:var(--sans);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-canvas{display:block;position:fixed;inset:0;touch-action:none;cursor:grab}
-canvas.grabbing{cursor:grabbing}
-canvas.placing{cursor:crosshair}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--desktop);font-family:var(--sys);font-size:12px;
+  -webkit-user-select:none;user-select:none;cursor:default}
 
-/* TOP BAR */
-.bar{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:14px;
-  padding:14px 16px;pointer-events:none;background:var(--paper)}
-.mark{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--ink);opacity:.85}
-.mark b{font-weight:700}
-.spacer{flex:1}
-.btn{pointer-events:auto;font-family:var(--mono);font-size:12px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink);background:transparent;border:1.5px solid var(--ink);
-  padding:9px 14px;cursor:pointer;transition:background .12s,color .12s}
-.btn:hover{background:var(--ink);color:var(--paper)}
-.btn.active{background:var(--ink);color:var(--paper)}
-.user-count{pointer-events:none;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
-  color:var(--ink-soft)}
+/* DESKTOP CANVAS */
+#desktop{position:fixed;inset:0;bottom:var(--taskbar-h);overflow:hidden}
 
-/* LEGEND */
-.legend{position:fixed;left:16px;bottom:68px;z-index:5;font-family:var(--mono);
-  font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--ink-soft);max-width:56ch}
-.legend .now{color:var(--signal)}
-.legend .air{color:var(--live)}
-.legend .warn{color:var(--live);display:none}
-.legend .warn.show{display:inline}
+/* WINDOW */
+.win{position:absolute;background:var(--win-face);min-width:180px;
+  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
+  box-shadow:1px 1px 0 var(--win-border-darker);z-index:10;display:flex;flex-direction:column}
+.win.focused{z-index:100}
+.win-title{display:flex;align-items:center;gap:4px;padding:2px 3px;
+  background:linear-gradient(90deg,var(--win-title),#1084d0);color:var(--win-title-text);
+  font-size:11px;font-weight:700;cursor:move;white-space:nowrap;overflow:hidden}
+.win.unfocused .win-title{background:linear-gradient(90deg,#808080,#b0b0b0)}
+.win-title span{flex:1;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.win-btn{width:16px;height:14px;background:var(--win-face);border:1px solid;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+  font-size:9px;line-height:12px;text-align:center;cursor:pointer;color:#000;font-family:var(--mono);flex-shrink:0}
+.win-btn:active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
+.win-body{padding:6px;flex:1;overflow:auto;font-size:11px}
 
-/* PANEL */
-.panel{position:fixed;z-index:8;width:290px;background:var(--paper);border:1.5px solid var(--ink);
-  box-shadow:6px 6px 0 var(--ink-faint);padding:14px;display:none}
-.panel.open{display:block}
-.panel h3{margin:0 0 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
-  text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:8px}
-.panel input[type=text],.panel input[type=url]{width:100%;font-family:var(--sans);font-size:15px;padding:8px;
-  border:1.5px solid var(--ink);background:transparent;color:var(--ink);margin-bottom:10px}
-.panel input[type=text]:focus,.panel input[type=url]:focus{outline:none;border-color:var(--signal)}
+/* NOTE WINDOW */
+.note-body{background:var(--note-bg);padding:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;
+  min-height:40px;border:1px inset var(--win-border-dark)}
+.note-meta{font-size:9px;color:#888;padding:3px 0 0;font-family:var(--mono)}
 
-.sources{display:flex;flex-direction:column;gap:7px;margin-bottom:11px}
-.src{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-  border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:11px 10px;
-  cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.src:hover{background:var(--ink);color:var(--paper)}
-.src.chosen{background:var(--ink);color:var(--paper)}
-.src.air{border-color:var(--live);color:var(--live)}
-.src.air:hover,.src.air.chosen{background:var(--live);color:var(--paper)}
-.src.broadcast{border-color:var(--broadcast);color:var(--broadcast)}
-.src.broadcast:hover,.src.broadcast.chosen{background:var(--broadcast);color:var(--paper)}
-.src input{display:none}
-.src .tag{opacity:.6;font-size:10px}
+/* PLAYER WINDOW (Winamp-style) */
+.player{width:260px}
+.player .win-body{padding:0;background:#232323;color:#00ff00;font-family:var(--mono)}
+.player-display{padding:6px 8px;background:#0a0a14;margin:4px;border:1px inset #444;min-height:30px}
+.player-title-scroll{font-size:10px;color:#00cc00;white-space:nowrap;overflow:hidden}
+.player-time{font-size:18px;color:#00ff00;font-family:var(--mono);margin-top:2px}
+.player-controls{display:flex;align-items:center;justify-content:center;gap:2px;padding:4px 6px}
+.player-controls button{width:28px;height:18px;font-size:9px;background:#3a3a3a;color:#ccc;border:1px solid;
+  border-color:#555 #222 #222 #555;cursor:pointer;font-family:var(--mono)}
+.player-controls button:hover{background:#555}
+.player-controls button.active{background:#00aa00;color:#000}
+.player-progress{margin:0 6px 4px;height:8px;background:#0a0a14;border:1px inset #444;cursor:pointer;position:relative}
+.player-progress-fill{height:100%;background:#00aa00;pointer-events:none}
+.player-vol{display:flex;align-items:center;gap:4px;padding:0 6px 4px;font-size:9px;color:#888}
+.player-vol input{width:60px;height:6px;-webkit-appearance:none;appearance:none;background:#0a0a14;outline:none;cursor:pointer}
+.player-vol input::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;background:#aaa;border:1px solid #666}
 
-.recbar{display:none;align-items:center;gap:10px;border:1.5px solid var(--live);
-  padding:10px;margin-bottom:11px;font-family:var(--mono);font-size:12px;letter-spacing:.08em}
-.recbar.show{display:flex}
-.recdot{width:11px;height:11px;border-radius:50%;background:var(--live);animation:blink 1s steps(2) infinite}
-@keyframes blink{50%{opacity:.15}}
-.rectime{color:var(--live);font-weight:700;flex:1}
-.recstop{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  border:1.5px solid var(--live);background:var(--live);color:var(--paper);padding:6px 10px;cursor:pointer}
+/* RECORDER WINDOW */
+.recorder{width:240px}
+.recorder .win-body{padding:8px;background:#1a1a1a;color:#ddd;font-family:var(--mono);text-align:center}
+.rec-timer{font-size:22px;color:#ff4444;font-family:var(--mono);margin:8px 0}
+.rec-btn{width:48px;height:48px;border-radius:50%;border:3px solid #666;background:#aa0000;color:#fff;
+  font-size:10px;cursor:pointer;font-family:var(--mono);margin:8px auto;display:block}
+.rec-btn:hover{background:#cc0000}
+.rec-btn.recording{background:#ff0000;animation:pulse-rec 1s infinite}
+.rec-btn.stopped{background:#444;border-color:#555}
+@keyframes pulse-rec{0%,100%{box-shadow:0 0 0 0 #ff000060}50%{box-shadow:0 0 0 8px #ff000000}}
+.rec-status{font-size:10px;color:#888;margin-top:4px}
 
-.note{font-family:var(--mono);font-size:10px;line-height:1.6;letter-spacing:.04em;
-  color:var(--ink-soft);margin:-2px 0 11px;display:none}
-.note.show{display:block}
-.note.air{color:var(--live)}
+/* LIVE WINDOW */
+.live-win{width:220px}
+.live-win .win-title{background:linear-gradient(90deg,#aa0000,#cc4400) !important}
+.live-body{padding:8px;background:#1a1a1a;color:#ddd;font-family:var(--mono);text-align:center}
+.live-indicator{font-size:14px;color:#ff0000;font-weight:700;animation:pulse-rec 1.2s infinite}
+.live-bars{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:30px;margin:8px 0}
+.live-bar{width:4px;background:#00cc00;border-radius:1px;transition:height .1s}
 
-.panel .row{display:flex;gap:8px}
-.panel .row .btn{flex:1;text-align:center}
-.panel .btn.ghost{border-color:var(--ink-soft);color:var(--ink-soft)}
+/* ZINE WINDOW */
+.zine-win{width:300px;height:400px}
+.zine-win .win-body{padding:0;display:flex;flex-direction:column}
+.zine-win iframe{flex:1;border:none;background:#fff}
+.zine-nav{display:flex;gap:4px;padding:4px;background:var(--win-face);border-top:1px solid var(--win-border-dark)}
+.zine-nav button{font-size:10px;padding:2px 8px;background:var(--win-face);border:1px solid;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);cursor:pointer}
 
-/* ACTIONS MENU */
-.actions{position:fixed;z-index:9;background:var(--paper);border:1.5px solid var(--ink);
-  box-shadow:5px 5px 0 var(--ink-faint);display:none;flex-direction:column}
-.actions.open{display:flex}
-.actions button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-  background:transparent;border:none;border-bottom:1px solid var(--ink-faint);color:var(--ink);
-  padding:11px 16px;cursor:pointer;text-align:left;white-space:nowrap}
-.actions button:last-child{border-bottom:none}
-.actions button:hover{background:var(--ink);color:var(--paper)}
-.actions button.air{color:var(--live)}
-.actions button.air:hover{background:var(--live);color:var(--paper)}
-.actions button.broadcast{color:var(--broadcast)}
-.actions button.broadcast:hover{background:var(--broadcast);color:var(--paper)}
-.actions button.note-act{color:var(--note)}
-.actions button.note-act:hover{background:var(--note);color:var(--paper)}
+/* GATE / LOGIN */
+.gate{position:fixed;inset:0;z-index:9999;background:var(--desktop);display:flex;align-items:center;justify-content:center}
+.gate-box{background:var(--win-face);border:2px solid;
+  border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
+  width:360px;max-width:90vw}
+.gate-title{padding:3px 5px;background:linear-gradient(90deg,var(--win-title),#1084d0);
+  color:#fff;font-size:11px;font-weight:700}
+.gate-body{padding:20px}
+.gate-body label{font-size:11px;display:block;margin-bottom:4px}
+.gate-body input[type=text]{width:100%;padding:3px 4px;border:2px solid;
+  border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
+  font-size:12px;font-family:var(--sys);margin-bottom:12px;background:#fff}
+.gate-body input[type=text]:focus{outline:none}
+.gate-roles{display:flex;gap:8px;margin-bottom:16px}
+.gate-role{flex:1;padding:10px;border:2px solid;cursor:pointer;text-align:center;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+  background:var(--win-face);font-size:11px}
+.gate-role:hover{background:#d4d4d4}
+.gate-role.selected{background:var(--win-title);color:#fff;border-color:var(--win-title)}
+.gate-role .role-icon{font-size:20px;margin-bottom:4px}
+.gate-role .role-name{font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+.gate-role .role-desc{font-size:9px;margin-top:3px;opacity:.8}
+.gate-enter{width:100%;padding:6px;background:var(--win-face);border:2px solid;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+  font-size:12px;font-family:var(--sys);cursor:pointer;font-weight:700}
+.gate-enter:hover{background:#d4d4d4}
+.gate-enter:active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
 
-/* NOTE PANEL */
-.note-panel{position:fixed;z-index:8;width:280px;background:var(--paper);border:1.5px solid var(--note);
-  box-shadow:6px 6px 0 var(--ink-faint);padding:14px;display:none}
-.note-panel.open{display:block}
-.note-panel h3{margin:0 0 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
-  text-transform:uppercase;font-weight:700;color:var(--note)}
-.note-panel textarea{width:100%;font-family:var(--sans);font-size:14px;padding:8px;
-  border:1.5px solid var(--note);background:transparent;color:var(--ink);resize:vertical;
-  min-height:80px;max-height:200px;line-height:1.5}
-.note-panel textarea:focus{outline:none;border-color:var(--note)}
-.note-panel .row{display:flex;gap:8px;margin-top:10px}
-.note-panel .row .btn{flex:1;text-align:center}
-.note-panel .btn.note-place{border-color:var(--note);color:var(--note)}
-.note-panel .btn.note-place:hover{background:var(--note);color:var(--paper)}
+/* TASKBAR */
+.taskbar{position:fixed;bottom:0;left:0;right:0;height:var(--taskbar-h);z-index:200;
+  background:var(--win-face);border-top:2px solid var(--win-border-light);
+  display:flex;align-items:center;padding:2px 4px;gap:2px}
+.start-btn{display:flex;align-items:center;gap:3px;padding:2px 6px;height:28px;
+  background:var(--win-face);border:2px solid;font-weight:700;font-size:11px;cursor:pointer;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light)}
+.start-btn:active,.start-btn.pressed{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
+.start-btn .start-icon{font-size:14px}
+.task-sep{width:2px;height:24px;border-left:1px solid var(--win-border-dark);border-right:1px solid var(--win-border-light);margin:0 2px}
+.task-items{flex:1;display:flex;gap:2px;overflow-x:auto;min-width:0}
+.task-item{height:24px;padding:0 8px;font-size:10px;background:var(--win-face);border:2px solid;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
+  cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;
+  display:flex;align-items:center;gap:3px}
+.task-item.active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);background:#b0b0b0}
+.task-clock{font-family:var(--mono);font-size:11px;padding:0 8px;height:24px;display:flex;align-items:center;
+  border:2px solid;border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
+  min-width:70px;justify-content:center;gap:8px}
+.task-users{font-size:9px;color:#555}
 
-/* ZINE PANEL */
-.zine-panel{position:fixed;z-index:8;width:280px;background:var(--paper);border:1.5px solid var(--zine);
-  box-shadow:6px 6px 0 var(--ink-faint);padding:14px;display:none}
-.zine-panel.open{display:block}
-.zine-panel h3{margin:0 0 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
-  text-transform:uppercase;font-weight:700;color:var(--zine)}
-.zine-panel input[type=text]{width:100%;font-family:var(--sans);font-size:14px;padding:8px;
-  border:1.5px solid var(--zine);background:transparent;color:var(--ink);margin-bottom:10px}
-.zine-panel input[type=text]:focus{outline:none;border-color:var(--zine)}
-.zine-drop{width:100%;padding:20px 14px;border:2px dashed var(--zine);background:transparent;
-  text-align:center;cursor:pointer;margin-bottom:10px;transition:background .12s}
-.zine-drop:hover,.zine-drop.has-file{background:rgba(107,63,160,0.06)}
-.zine-drop-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--zine)}
-.zine-drop-hint{font-family:var(--mono);font-size:9px;color:var(--ink-soft);margin-top:4px}
-.zine-panel .row{display:flex;gap:8px;margin-top:10px}
-.zine-panel .row .btn{flex:1;text-align:center}
-.zine-panel .btn.zine-place{border-color:var(--zine);color:var(--zine)}
-.zine-panel .btn.zine-place:hover{background:var(--zine);color:var(--paper)}
+/* START MENU */
+.start-menu{position:fixed;bottom:var(--taskbar-h);left:0;z-index:300;background:var(--win-face);
+  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
+  width:200px;display:none;box-shadow:2px 2px 0 #00000040}
+.start-menu.open{display:block}
+.start-menu-header{background:linear-gradient(180deg,var(--win-title),#1084d0);color:#fff;
+  padding:8px;font-size:11px;font-weight:700;writing-mode:vertical-lr;transform:rotate(180deg);
+  position:absolute;left:0;top:0;bottom:0;width:24px;display:flex;align-items:center;justify-content:flex-end;letter-spacing:.1em}
+.start-menu-items{margin-left:24px;padding:4px 0}
+.start-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:11px;cursor:pointer}
+.start-item:hover{background:var(--win-title);color:#fff}
+.start-item .si-icon{font-size:16px;width:20px;text-align:center}
+.start-sep{height:1px;background:var(--win-border-dark);margin:4px 12px 4px 36px}
+.start-item.disabled{color:#888;cursor:default}
+.start-item.disabled:hover{background:transparent;color:#888}
 
-/* ZINE READER */
-.zine-reader{position:fixed;inset:0;z-index:25;background:rgba(22,19,15,0.85);
-  display:none;flex-direction:column;align-items:center}
-.zine-reader.open{display:flex}
-.zine-reader-bar{width:100%;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 20px;background:var(--paper);border-bottom:1.5px solid var(--zine)}
-.zine-reader-bar h3{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--zine);font-weight:700;margin:0}
-.zine-reader-bar .page-info{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
-.zine-reader-bar .btn{font-size:11px;padding:7px 12px}
-.zine-reader-body{flex:1;width:100%;overflow-y:auto;display:flex;justify-content:center;
-  padding:20px;-webkit-overflow-scrolling:touch}
-.zine-reader-body canvas{max-width:100%;height:auto;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
-.zine-nav{display:flex;gap:10px;padding:12px 20px;background:var(--paper);border-top:1.5px solid var(--zine);
-  width:100%;justify-content:center;align-items:center}
-.zine-nav .btn{min-width:80px;text-align:center}
-.zine-nav .page-num{font-family:var(--mono);font-size:12px;color:var(--ink-soft);min-width:80px;text-align:center}
+/* CONTEXT MENU */
+.ctx-menu{position:fixed;z-index:400;background:var(--win-face);border:2px solid;
+  border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
+  box-shadow:2px 2px 0 #00000040;display:none;min-width:140px}
+.ctx-menu.open{display:block}
+.ctx-item{padding:4px 20px;font-size:11px;cursor:pointer}
+.ctx-item:hover{background:var(--win-title);color:#fff}
 
-/* ACTIONS */
-.actions button.zine-act{color:var(--zine)}
-.actions button.zine-act:hover{background:var(--zine);color:var(--paper)}
-
-/* RADIO PLAYER */
-.radio{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--paper);
-  border-top:1.5px solid var(--ink);display:none;flex-direction:column}
-.radio.open{display:flex}
-.radio-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ink-faint);min-height:56px}
-.radio-toggle{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  background:none;border:1.5px solid var(--ink);color:var(--ink);padding:6px 10px;cursor:pointer;flex-shrink:0}
-.radio-toggle:hover,.radio-toggle.active{background:var(--ink);color:var(--paper)}
-.radio-now{flex:1;min-width:0}
-.radio-now-title{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
-  font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.radio-now-tag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--ink-soft)}
-.radio-now-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  border:1.5px solid var(--ink)}
-.radio-now-avatar img{width:100%;height:100%;object-fit:cover}
-.radio-vis{display:flex;align-items:flex-end;gap:2px;height:28px;width:100px;flex-shrink:0}
-.radio-vis .bar{flex:1;background:var(--signal);min-width:2px;border-radius:1px 1px 0 0;
-  transition:height .06s linear}
-.radio-vol{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.radio-vol label{font-family:var(--mono);font-size:9px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
-.radio-vol input[type=range]{width:70px;accent-color:var(--ink);height:4px}
-.radio-mute{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
-  background:none;border:1.5px solid var(--ink);color:var(--ink);padding:5px 8px;cursor:pointer;flex-shrink:0}
-.radio-mute:hover,.radio-mute.active{background:var(--live);border-color:var(--live);color:var(--paper)}
-.radio-dist{font-family:var(--mono);font-size:9px;color:var(--ink-soft);letter-spacing:.06em;flex-shrink:0;min-width:60px;text-align:right}
-.radio-actions{font-family:var(--mono);font-size:11px;background:none;border:none;
-  color:var(--ink-soft);cursor:pointer;padding:4px 6px;flex-shrink:0}
-.radio-actions:hover{color:var(--ink)}
-
-/* STATION LIST */
-.radio-list{max-height:0;overflow:hidden;transition:max-height .25s ease}
-.radio-list.open{max-height:300px;overflow-y:auto}
-.radio-list-header{display:flex;align-items:center;justify-content:space-between;
-  padding:8px 16px;border-bottom:1px solid var(--ink-faint)}
-.radio-list-header span{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink-soft);font-weight:700}
-.station-row{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;
-  border-bottom:1px solid var(--ink-faint);transition:background .1s}
-.station-row:hover{background:rgba(22,19,15,0.04)}
-.station-row.active{background:rgba(31,63,207,0.06)}
-.station-row .sr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.station-row .sr-avatar{width:24px;height:24px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  border:1px solid var(--ink-soft)}
-.station-row .sr-avatar img{width:100%;height:100%;object-fit:cover}
-.station-row .sr-info{flex:1;min-width:0}
-.station-row .sr-name{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
-  font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.station-row .sr-type{font-family:var(--mono);font-size:9px;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase}
-.station-row .sr-dist{font-family:var(--mono);font-size:9px;color:var(--ink-soft);min-width:50px;text-align:right}
-.station-row .sr-vol{width:40px;height:3px;background:var(--ink-faint);border-radius:2px;overflow:hidden;flex-shrink:0}
-.station-row .sr-vol-fill{height:100%;border-radius:2px;transition:width .15s linear}
-.station-row .sr-play{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-  padding:3px 8px;border:1px solid;border-radius:3px;background:transparent;cursor:pointer;flex-shrink:0;
-  transition:background .12s,color .12s}
-.station-row .sr-play:hover{background:var(--ink);color:var(--paper)}
-.no-stations{padding:20px 16px;text-align:center;font-family:var(--mono);font-size:11px;
-  letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase}
-
-/* MIC INDICATOR */
-.mic-indicator{position:fixed;top:56px;right:16px;z-index:7;display:none;align-items:center;gap:8px;
-  background:var(--live);color:var(--paper);padding:6px 14px;font-family:var(--mono);font-size:11px;
-  letter-spacing:.12em;text-transform:uppercase;animation:mic-pulse 1.5s ease-in-out infinite}
-.mic-indicator.show{display:flex}
-.mic-dot{width:8px;height:8px;border-radius:50%;background:var(--paper)}
-@keyframes mic-pulse{0%,100%{opacity:1}50%{opacity:.6}}
-
-/* TOAST */
-#toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%) translateY(20px);z-index:30;
-  font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
-  background:var(--ink);color:var(--paper);padding:10px 20px;opacity:0;
-  transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* GATE */
-.gate{position:fixed;inset:0;z-index:20;background:var(--paper);display:flex;
-  flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
-.gate .big{font-family:var(--mono);font-size:13px;letter-spacing:.34em;text-transform:uppercase;margin-bottom:22px}
-.gate h1{font-size:clamp(34px,8vw,68px);line-height:.96;font-weight:800;letter-spacing:-.02em;margin:0 0 18px;max-width:13ch}
-.gate p{max-width:50ch;font-size:15px;line-height:1.6;color:var(--ink-soft);margin:0 0 28px}
-.gate .enter{font-family:var(--mono);font-size:13px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--paper);background:var(--ink);border:none;padding:16px 30px;cursor:pointer}
-.gate .enter:hover{background:var(--signal)}
-.gate input[type=text]{font-family:var(--sans);font-size:16px;padding:10px 14px;border:1.5px solid var(--ink);
-  background:transparent;color:var(--ink);text-align:center;margin-bottom:14px;width:260px;max-width:90vw}
-.gate input[type=text]:focus{outline:none;border-color:var(--signal)}
-.gate label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--ink-soft);
-  text-transform:uppercase;margin-bottom:6px;display:block}
-.keys{margin-top:26px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-soft);line-height:1.9}
-.keys span{color:var(--ink)}
-
-/* AVATAR PICKER */
-.avatar-pick{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.avatar-preview{width:56px;height:56px;border-radius:50%;border:2px dashed var(--ink-soft);
-  background:var(--ink-faint);display:flex;align-items:center;justify-content:center;
-  overflow:hidden;cursor:pointer;flex-shrink:0;position:relative}
-.avatar-preview img{width:100%;height:100%;object-fit:cover}
-.avatar-preview .avatar-placeholder{font-family:var(--mono);font-size:9px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--ink-soft);text-align:center;line-height:1.3}
-.avatar-preview.has-img{border-style:solid;border-color:var(--ink)}
-
-/* PLAYER AVATAR */
-.player-avatar{width:28px;height:28px;border-radius:50%;overflow:hidden;flex-shrink:0;
-  border:1.5px solid var(--ink);margin-right:8px}
-.player-avatar img{width:100%;height:100%;object-fit:cover}
-
-/* STATION WINDOW STYLE */
-.station-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em}
+/* SCROLL */
+::-webkit-scrollbar{width:14px}
+::-webkit-scrollbar-track{background:var(--win-face);border:1px solid var(--win-border-dark)}
+::-webkit-scrollbar-thumb{background:var(--win-face);border:2px solid;
+  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light)}
 </style>
 </head>
 <body>
 
-<canvas id="field"></canvas>
-
-<div class="bar">
-  <div class="mark"><b>LITTLE FIELD</b> &nbsp;/&nbsp; shared acoustic surface</div>
-  <div class="spacer"></div>
-  <span class="user-count" id="userCount"></span>
-  <button class="btn" id="zineBtn">drop a zine</button>
-  <button class="btn" id="noteBtn">drop a note</button>
-  <button class="btn" id="addBtn">drop a station</button>
-</div>
-
-<div class="legend" id="legend">
-  drag to move &middot; scroll to zoom &middot; tap a station to act &middot; drag an mp3 in to plant it<br>
-  <span id="hearing">standing in silence</span>
-  <span class="warn" id="fbWarn">&nbsp;&middot;&nbsp;on air and on speakers — use headphones</span>
-</div>
-
-<!-- COMPOSE PANEL -->
-<div class="panel" id="panel">
-  <h3>new station</h3>
-  <input type="text" id="stName" placeholder="name this station" maxlength="40">
-
-  <div class="sources">
-    <label class="src" id="srcFile">
-      attach a file <span class="tag">mp3 / wav / ogg</span>
-      <input type="file" id="stFile" accept="audio/*">
-    </label>
-    <button class="src" id="srcRec">record a clip <span class="tag">from the mic</span></button>
-    <button class="src air" id="srcAir">go on air <span class="tag">live mic</span></button>
-    <button class="src broadcast" id="srcBroadcast">feed broadcast <span class="tag" id="broadcastTag">subversive radio</span></button>
-  </div>
-
-  <div class="recbar" id="recbar">
-    <span class="recdot"></span>
-    <span class="rectime" id="rectime">0:00</span>
-    <button class="recstop" id="recstop">stop</button>
-  </div>
-
-  <div class="note" id="noteAir">live mic — anyone nearby hears you in real time. use headphones on speakers.</div>
-  <div class="note" id="noteRec">recorded clip will loop at this station.</div>
-  <div class="note" id="noteBroadcast">pipes the subversive radio broadcast into this station spatially.</div>
-
-  <input type="url" id="broadcastUrl" placeholder="broadcast url (leave blank for default)" style="display:none">
-
-  <div class="row">
-    <button class="btn ghost" id="cancelBtn">cancel</button>
-    <button class="btn" id="placeBtn">place</button>
-  </div>
-</div>
-
-<!-- NOTE PANEL -->
-<div class="note-panel" id="notePanel">
-  <h3>leave a note</h3>
-  <textarea id="noteText" placeholder="write something here..." maxlength="280"></textarea>
-  <div class="row">
-    <button class="btn ghost" id="noteCancelBtn">cancel</button>
-    <button class="btn note-place" id="notePlaceBtn">pin it</button>
-  </div>
-</div>
-
-<!-- ZINE PANEL -->
-<div class="zine-panel" id="zinePanel">
-  <h3>drop a zine</h3>
-  <input type="text" id="zineName" placeholder="title this zine" maxlength="60">
-  <label class="zine-drop" id="zineDrop">
-    <div class="zine-drop-label" id="zineDropLabel">choose a pdf</div>
-    <div class="zine-drop-hint">pdf up to 500mb</div>
-    <input type="file" id="zineFile" accept=".pdf,application/pdf" style="display:none">
-  </label>
-  <div class="row">
-    <button class="btn ghost" id="zineCancelBtn">cancel</button>
-    <button class="btn zine-place" id="zinePlaceBtn">pin it</button>
-  </div>
-</div>
-
-<!-- ZINE READER -->
-<div class="zine-reader" id="zineReader">
-  <div class="zine-reader-bar">
-    <h3 id="readerTitle">—</h3>
-    <span class="page-info" id="readerPageInfo"></span>
-    <button class="btn" id="readerCloseBtn">close</button>
-  </div>
-  <div class="zine-reader-body" id="readerBody">
-    <canvas id="readerCanvas"></canvas>
-  </div>
-  <div class="zine-nav">
-    <button class="btn" id="readerPrev">← prev</button>
-    <span class="page-num" id="readerPageNum">1 / 1</span>
-    <button class="btn" id="readerNext">next →</button>
-  </div>
-</div>
-
-<!-- RADIO PLAYER -->
-<div class="radio" id="radio">
-  <div class="radio-bar">
-    <button class="radio-toggle" id="radioToggle" title="station list">▲</button>
-    <div class="radio-now-avatar" id="radioAvatar" style="display:none"><img></div>
-    <div class="radio-now" id="radioNow">
-      <div class="radio-now-title" id="radioTitle">no station selected</div>
-      <div class="radio-now-tag" id="radioTag">tap a station or choose from list</div>
-    </div>
-    <div class="radio-vis" id="radioVis"></div>
-    <div class="radio-vol">
-      <label>vol</label>
-      <input type="range" id="radioVol" min="0" max="100" value="100">
-    </div>
-    <button class="radio-mute" id="radioMute">mute</button>
-    <span class="radio-dist" id="radioDist"></span>
-    <button class="radio-actions" id="radioActions">⋯</button>
-  </div>
-  <div class="radio-list" id="radioList">
-    <div class="radio-list-header">
-      <span>stations on the field</span>
-      <span id="radioCount">0</span>
-    </div>
-    <div id="radioStations"></div>
-  </div>
-</div>
-
-<!-- MIC INDICATOR -->
-<div class="mic-indicator" id="micIndicator">
-  <span class="mic-dot"></span>
-  <span id="micLabel">on air</span>
-</div>
-
-<!-- STATION ACTIONS -->
-<div class="actions" id="actions"></div>
-
-<!-- GATE / ENTRY -->
+<!-- GATE -->
 <div class="gate" id="gate">
-  <div class="big">we are born free &middot; community radio</div>
-  <h1>Step into the field.</h1>
-  <p>A shared surface where sound is placed, not pressed. Drop stations, feed them a file,
-     a recording, a live mic, or a broadcast stream — then walk. What you hear is wherever you stand.
-     Everyone in the same field hears the same space.</p>
-  <div class="avatar-pick">
-    <label class="avatar-preview" id="avatarPreview">
-      <span class="avatar-placeholder">add<br>photo</span>
-      <input type="file" id="avatarFile" accept="image/*" style="display:none">
-    </label>
-    <div style="text-align:left">
-      <label for="nameInput">your name</label>
-      <input type="text" id="nameInput" placeholder="listener" maxlength="24" style="margin-bottom:0;width:200px">
+  <div class="gate-box">
+    <div class="gate-title">Welcome to Little Field</div>
+    <div class="gate-body">
+      <label for="nameInput">Your name:</label>
+      <input type="text" id="nameInput" placeholder="anonymous" maxlength="24">
+      <label>Join as:</label>
+      <div class="gate-roles">
+        <div class="gate-role selected" data-role="contributor" onclick="selectRole(this)">
+          <div class="role-icon">&#9998;</div>
+          <div class="role-name">Contributor</div>
+          <div class="role-desc">Drop notes, record, upload, go live</div>
+        </div>
+        <div class="gate-role" data-role="listener" onclick="selectRole(this)">
+          <div class="role-icon">&#9835;</div>
+          <div class="role-name">Listener</div>
+          <div class="role-desc">Browse, read &amp; listen only</div>
+        </div>
+      </div>
+      <button class="gate-enter" id="enterBtn">Enter the Field</button>
     </div>
   </div>
-  <button class="enter" id="enterBtn">enter the field</button>
-  <div class="keys">
-    <span>drag</span> move &nbsp;&middot;&nbsp;
-    <span>scroll</span> zoom &nbsp;&middot;&nbsp;
-    <span>tap a station</span> to act on it &nbsp;&middot;&nbsp;
-    <span>drag an mp3 in</span> to plant it
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop"></div>
+
+<!-- TASKBAR -->
+<div class="taskbar" id="taskbar" style="display:none">
+  <button class="start-btn" id="startBtn" onclick="toggleStart()">
+    <span class="start-icon">&#127793;</span> Field
+  </button>
+  <div class="task-sep"></div>
+  <div class="task-items" id="taskItems"></div>
+  <div class="task-clock">
+    <span id="clock">00:00</span>
+    <span class="task-users" id="taskUsers">0</span>
   </div>
 </div>
+
+<!-- START MENU -->
+<div class="start-menu" id="startMenu">
+  <div class="start-menu-header">LITTLE FIELD</div>
+  <div class="start-menu-items">
+    <div class="start-item contributor-only" onclick="doAction('note')"><span class="si-icon">&#128221;</span> Drop a Note</div>
+    <div class="start-item contributor-only" onclick="doAction('record')"><span class="si-icon">&#9210;</span> Record Audio</div>
+    <div class="start-item contributor-only" onclick="doAction('upload')"><span class="si-icon">&#127925;</span> Upload MP3</div>
+    <div class="start-item contributor-only" onclick="doAction('live')"><span class="si-icon">&#127908;</span> Go Live</div>
+    <div class="start-sep"></div>
+    <div class="start-item contributor-only" onclick="doAction('zine')"><span class="si-icon">&#128214;</span> Upload Zine (PDF)</div>
+    <div class="start-sep"></div>
+    <div class="start-item" onclick="doAction('about')"><span class="si-icon">&#8505;</span> About</div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctxMenu"></div>
+
+<!-- HIDDEN FILE INPUTS -->
+<input type="file" id="audioFileInput" accept="audio/*" style="display:none">
+<input type="file" id="zineFileInput" accept=".pdf" style="display:none">
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-"use strict";
-
-const BROADCAST_DEFAULT = "https://subversive-radio.onrender.com";
-
-const canvas = document.getElementById("field");
-const ctx = canvas.getContext("2d");
-let DPR = Math.min(window.devicePixelRatio || 1, 2);
-
+// ---- STATE ------------------------------------------------------------------
 const state = {
-  you: { x: 0, y: 0 },
-  zoom: 1,
-  stations: [],
-  notes: [],
-  zines: [],
-  users: new Map(),
-  placing: false,
-  placingNote: false,
-  placingZine: false,
-  pending: null,
-  userId: null
+  userId: null, userName: '', role: 'contributor',
+  panX: 0, panY: 0, zoom: 1
 };
-
 let socket = null;
+const wins = new Map();
+let winZ = 10;
+let focusedWin = null;
+let startOpen = false;
 let audioCtx = null;
-let micStream = null;
-let broadcastSockets = new Map();
-let myAvatarUrl = null;
-const avatarImages = new Map();
+let userCount = 0;
 
-function loadAvatarImage(url){
-  if(!url) return null;
-  if(avatarImages.has(url)) return avatarImages.get(url);
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = url;
-  avatarImages.set(url, img);
-  return img;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-// avatar picker
-document.getElementById('avatarFile').addEventListener('change', e => {
-  const f = e.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const preview = document.getElementById('avatarPreview');
-    preview.innerHTML = '<img src="'+reader.result+'">';
-    preview.classList.add('has-img');
-    myAvatarUrl = reader.result;
-  };
-  reader.readAsDataURL(f);
-});
-
-function W(){ return canvas.width / DPR; }
-function H(){ return canvas.height / DPR; }
-function worldToScreen(wx, wy){
-  return { x:(wx-state.you.x)*state.zoom + W()/2, y:(wy-state.you.y)*state.zoom + H()/2 };
-}
-function screenToWorld(sx, sy){
-  return { x:(sx-W()/2)/state.zoom + state.you.x, y:(sy-H()/2)/state.zoom + state.you.y };
-}
-const REACH = 460;
-
-function ensureAudio(){
-  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state === "suspended") audioCtx.resume();
+// ---- GATE -------------------------------------------------------------------
+let selectedRole = 'contributor';
+function selectRole(el) {
+  document.querySelectorAll('.gate-role').forEach(r => r.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedRole = el.dataset.role;
 }
 
-async function getMic(){
-  if(micStream) return micStream;
-  micStream = await navigator.mediaDevices.getUserMedia({audio:true});
-  return micStream;
-}
+document.getElementById('enterBtn').addEventListener('click', enterField);
+document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') enterField(); });
 
-// upload audio blob/file to server, returns fileId
-async function uploadAudio(blobOrFile){
-  const form = new FormData();
-  form.append('audio', blobOrFile);
-  const resp = await fetch('/api/audio/upload', { method: 'POST', body: form });
-  if(!resp.ok) throw new Error('upload failed');
-  return await resp.json();
-}
-
-// play audio from server using <audio> element
-function feedFromFile(station, fileId){
-  stopStationAudio(station);
-  const audio = new Audio('/api/audio/' + fileId);
-  audio.loop = true;
-  audio.volume = 0;
-  audio.play().catch(() => {});
-  station._audio = audio;
-  station.audioFileId = fileId;
-  station.hasAudio = true;
-  station.live = false;
-  station.type = 'recording';
-  station.level = 0;
-}
-
-// play audio from local blob URL (before upload completes)
-function feedFromBlob(station, blob){
-  stopStationAudio(station);
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  audio.loop = true;
-  audio.volume = 0;
-  audio.play().catch(() => {});
-  station._audio = audio;
-  station._blobUrl = url;
-  station.hasAudio = true;
-  station.live = false;
-  station.type = 'recording';
-  station.level = 0;
-}
-
-async function feedLive(station){
+function enterField() {
   ensureAudio();
-  const stream = await getMic();
-  stopStationAudio(station);
+  state.userName = document.getElementById('nameInput').value.trim() || 'anonymous';
+  state.role = selectedRole;
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('taskbar').style.display = 'flex';
 
-  // play mic locally through an audio element for monitoring
-  station.hasAudio = true;
-  station.live = true;
-  station.type = 'live';
-  station.level = 0;
-
-  // send live audio to other users via socket
-  const ctx = audioCtx;
-  const src = ctx.createMediaStreamSource(stream);
-  const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
-  src.connect(analyser);
-  station._analyser = analyser;
-  station._bins = new Uint8Array(analyser.frequencyBinCount);
-
-  const procNode = ctx.createScriptProcessor(4096, 1, 1);
-  src.connect(procNode);
-  procNode.connect(ctx.destination);
-  procNode.onaudioprocess = (e) => {
-    if(!station.live || !socket) return;
-    const input = e.inputBuffer.getChannelData(0);
-    const int16 = new Int16Array(input.length);
-    for(let i=0;i<input.length;i++){
-      int16[i] = Math.max(-32768, Math.min(32767, input[i]*32768));
-    }
-    socket.volatile.emit('live-audio', { stationId: station.id, audio: int16.buffer });
-  };
-  station._procNode = procNode;
-  station._micSrc = src;
-
-  socket.emit('go-on-air', station.id);
-}
-
-function feedBroadcast(station, broadcastUrl){
-  ensureAudio();
-  stopStationAudio(station);
-
-  const url = broadcastUrl || BROADCAST_DEFAULT;
-  const bSocket = io(url, { transports: ['websocket','polling'] });
-  bSocket.on('connect', () => {
-    bSocket.emit('join-listener');
-  });
-
-  station.hasAudio = true;
-  station.live = true;
-  station.type = 'broadcast';
-  station._broadcastUrl = url;
-  station.level = 0;
-
-  // use Web Audio API for broadcast PCM chunks (no file to use <audio> with)
-  const gain = audioCtx.createGain(); gain.gain.value = 0;
-  gain.connect(audioCtx.destination);
-  station._bGain = gain;
-
-  let nextPlayTime = 0;
-
-  bSocket.on('audio-stream', (arrayBuffer) => {
-    if(!station.hasAudio || !audioCtx) return;
-    try {
-      const int16 = new Int16Array(arrayBuffer);
-      const float32 = new Float32Array(int16.length);
-      for(let i=0;i<int16.length;i++) float32[i] = int16[i] / 32768;
-      const buffer = audioCtx.createBuffer(1, float32.length, 44100);
-      buffer.getChannelData(0).set(float32);
-      const now = audioCtx.currentTime;
-      if(nextPlayTime < now) nextPlayTime = now + 0.15;
-      if(nextPlayTime - now > 0.8) nextPlayTime = now + 0.15;
-      const src = audioCtx.createBufferSource();
-      src.buffer = buffer; src.connect(gain);
-      src.start(nextPlayTime);
-      nextPlayTime += buffer.duration;
-    } catch(e){}
-  });
-
-  broadcastSockets.set(station.id, bSocket);
-  socket.emit('feed-broadcast', { stationId: station.id, broadcastUrl: url });
-}
-
-function stopStationAudio(st){
-  // stop <audio> element
-  if(st._audio){ st._audio.pause(); st._audio.src = ''; st._audio = null; }
-  if(st._blobUrl){ URL.revokeObjectURL(st._blobUrl); st._blobUrl = null; }
-
-  // stop mic/live
-  try{ if(st._micSrc) st._micSrc.disconnect(); }catch(e){}
-  try{ if(st._procNode) st._procNode.disconnect(); }catch(e){}
-  try{ if(st._analyser) st._analyser.disconnect(); }catch(e){}
-  st._micSrc = null; st._procNode = null; st._analyser = null; st._bins = null;
-
-  // stop broadcast gain
-  try{ if(st._bGain) st._bGain.disconnect(); }catch(e){}
-  st._bGain = null;
-
-  const bs = broadcastSockets.get(st.id);
-  if(bs){ bs.disconnect(); broadcastSockets.delete(st.id); }
-}
-
-function makeLocalStation(data){
-  const st = {
-    id: data.id, name: data.name, x: data.x, y: data.y,
-    reach: data.reach || REACH,
-    hasAudio: data.hasAudio || false,
-    live: data.live || false,
-    owner: data.owner,
-    type: data.type || 'empty',
-    seed: data.seed || Math.random()*1000,
-    level: 0,
-    audioFileId: data.audioFileId || null,
-    avatarUrl: data.avatarUrl || null,
-    _audio: null, _bGain: null, _analyser: null, _bins: null,
-    _avatarImg: null
-  };
-  if(st.avatarUrl) st._avatarImg = loadAvatarImage(st.avatarUrl);
-  return st;
-}
-
-function audibility(st){
-  const d = Math.hypot(st.x - state.you.x, st.y - state.you.y);
-  if(d >= st.reach) return 0;
-  const t = 1 - d/st.reach;
-  return t*t;
-}
-
-function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-
-// ---- DRAWING ---------------------------------------------------------------
-
-function drawPaper(){
-  ctx.fillStyle = getCss("--paper"); ctx.fillRect(0,0,W(),H());
-  const step = 120*state.zoom;
-  if(step > 14){
-    const ox=(-state.you.x*state.zoom+W()/2)%step, oy=(-state.you.y*state.zoom+H()/2)%step;
-    ctx.strokeStyle=getCss("--ink-faint"); ctx.lineWidth=1; ctx.beginPath();
-    for(let x=ox;x<W();x+=step){ ctx.moveTo(x,0); ctx.lineTo(x,H()); }
-    for(let y=oy;y<H();y+=step){ ctx.moveTo(0,y); ctx.lineTo(W(),y); }
-    ctx.stroke();
-  }
-}
-
-function inkCircle(cx, cy, r, seed){
-  const segs=48; ctx.beginPath();
-  for(let i=0;i<=segs;i++){
-    const a=(i/segs)*Math.PI*2;
-    const wob=Math.sin(a*3+seed)*(r*0.012)+Math.cos(a*5+seed*1.7)*(r*0.008);
-    const rr=r+wob, x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  }
-}
-
-function drawStation(st){
-  const s = worldToScreen(st.x, st.y);
-  const heard = audibility(st);
-  const reachPx = st.reach * state.zoom;
-  const isBroadcast = st.type === 'broadcast';
-  const accent = st.live ? (isBroadcast ? getCss("--broadcast") : getCss("--live")) : getCss("--signal");
-
-  let amp = 0;
-  if(st.hasAudio && st._analyser && st._bins){
-    st._analyser.getByteFrequencyData(st._bins);
-    let sum=0; for(let i=0;i<st._bins.length;i++) sum+=st._bins[i];
-    amp = (sum/st._bins.length)/255;
-  } else if(st.hasAudio && st._audio && !st._audio.paused){
-    amp = 0.3 + Math.sin(Date.now()*0.003 + st.seed)*0.15;
-  }
-  st.level += ((amp*Math.max(heard,0.25)) - st.level)*0.18;
-  const active = heard > 0.001 && st.hasAudio;
-
-  // pulsing beacon for on-air / recording stations (visible when zoomed out)
-  if(st.hasAudio || st.live){
-    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.004 + st.seed);
-    const beaconR = Math.max(12, reachPx * 0.08) + pulse * Math.max(6, reachPx * 0.04);
-    ctx.beginPath(); ctx.arc(s.x, s.y, beaconR, 0, Math.PI*2);
-    ctx.fillStyle = accent;
-    ctx.globalAlpha = 0.15 + pulse * 0.1;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    // outer pulse ring
-    const ringR = beaconR + pulse * Math.max(8, reachPx * 0.05);
-    ctx.beginPath(); ctx.arc(s.x, s.y, ringR, 0, Math.PI*2);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.25 - pulse * 0.15;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+  if (state.role === 'listener') {
+    document.querySelectorAll('.contributor-only').forEach(el => {
+      el.classList.add('disabled');
+      el.onclick = null;
+    });
   }
 
-  const ringCount = 4;
-  for(let i=1;i<=ringCount;i++){
-    const fr = i/ringCount;
-    inkCircle(s.x, s.y, reachPx*fr, st.seed+i);
-    if(active){
-      ctx.strokeStyle = accent;
-      ctx.globalAlpha = 0.10 + heard*0.18*(1-fr*0.5) + st.level*0.25*(1-fr);
-      ctx.lineWidth = 1 + st.level*2.2*(1-fr);
-    } else if(st.live){
-      ctx.strokeStyle = accent; ctx.globalAlpha = 0.06+st.level*0.06; ctx.lineWidth = 1;
-    } else {
-      ctx.strokeStyle = getCss("--ink"); ctx.globalAlpha = 0.05+(st.hasAudio?0.03:0.015); ctx.lineWidth = 1;
-    }
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  const avatarR = 18 * state.zoom;
-  const hasAvatar = st._avatarImg && st._avatarImg.complete && st._avatarImg.naturalWidth > 0;
-
-  if(hasAvatar){
-    ctx.save();
-    ctx.beginPath(); ctx.arc(s.x, s.y, avatarR, 0, Math.PI*2); ctx.closePath(); ctx.clip();
-    ctx.drawImage(st._avatarImg, s.x - avatarR, s.y - avatarR, avatarR*2, avatarR*2);
-    ctx.restore();
-    // avatar ring
-    ctx.beginPath(); ctx.arc(s.x, s.y, avatarR, 0, Math.PI*2);
-    ctx.strokeStyle = (active||st.live) ? accent : getCss("--ink");
-    ctx.lineWidth = active ? 2.5 + st.level*2 : 1.8;
-    ctx.globalAlpha = st.hasAudio ? 1 : 0.5; ctx.stroke(); ctx.globalAlpha = 1;
-  } else {
-    const bodyR = 7 + st.level*5;
-    inkCircle(s.x, s.y, bodyR, st.seed);
-    ctx.fillStyle = (active||st.live) ? accent : getCss("--ink");
-    ctx.globalAlpha = st.hasAudio ? 1 : 0.35; ctx.fill(); ctx.globalAlpha = 1;
-    if(!st.hasAudio){
-      inkCircle(s.x, s.y, bodyR+4, st.seed);
-      ctx.strokeStyle = getCss("--ink"); ctx.lineWidth = 1.5;
-      ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]);
-    }
-  }
-
-  const labelX = s.x + (hasAvatar ? avatarR : 7 + st.level*5) + 8;
-  const labelY = s.y;
-
-  // dashed info box
-  const nameText = st.name;
-  ctx.font = '600 13px '+getCss("--sans");
-  const nameW = ctx.measureText(nameText).width;
-  let tag;
-  if(st.type === 'broadcast') tag = active ? "broadcast · in range" : "broadcast";
-  else if(st.live) tag = active ? "on air · in range" : "on air";
-  else if(st.hasAudio) tag = active ? "in range" : "out of range";
-  else tag = "no sound yet";
-  ctx.font = '10px '+getCss("--mono");
-  const tagW = ctx.measureText(tag.toUpperCase()).width;
-  const boxW = Math.max(nameW, tagW) + 16;
-  const boxH = 36;
-  const boxX = labelX - 4, boxY = labelY - 16;
-
-  ctx.strokeStyle = (active||st.live) ? accent : getCss("--ink-soft");
-  ctx.lineWidth = 1; ctx.globalAlpha = active ? 0.5 : 0.2;
-  ctx.setLineDash([4,3]);
-  ctx.strokeRect(boxX, boxY, boxW, boxH);
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-
-  ctx.font = '600 13px '+getCss("--sans");
-  ctx.fillStyle = (active||st.live) ? accent : getCss("--ink");
-  ctx.globalAlpha = (active||st.live) ? 1 : 0.6; ctx.textAlign = "left";
-  ctx.fillText(nameText, labelX, labelY);
-
-  ctx.font = '10px '+getCss("--mono"); ctx.globalAlpha = 0.62;
-  ctx.fillStyle = st.live ? (isBroadcast ? getCss("--broadcast") : getCss("--live")) : getCss("--ink-soft");
-  ctx.fillText(tag.toUpperCase(), labelX, labelY + 15);
-  ctx.globalAlpha = 1;
+  connectSocket();
 }
 
-function drawNote(note){
-  const s = worldToScreen(note.x, note.y);
-  const noteColor = getCss("--note");
-  const maxW = 180 * state.zoom;
-  if(maxW < 20) return;
-
-  ctx.save();
-  ctx.font = Math.max(10, 12*state.zoom) + 'px ' + getCss("--sans");
-  const lines = wrapText(ctx, note.text, maxW - 16);
-  const lineH = Math.max(12, 14*state.zoom);
-  const padX = 8*state.zoom, padY = 6*state.zoom;
-  const boxW = maxW;
-  const boxH = lines.length * lineH + padY*2;
-
-  // pin line
-  ctx.strokeStyle = noteColor; ctx.lineWidth = 1; ctx.globalAlpha = 0.4;
-  ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x, s.y - 10*state.zoom); ctx.stroke();
-
-  // pin dot
-  ctx.beginPath(); ctx.arc(s.x, s.y, 3*state.zoom, 0, Math.PI*2);
-  ctx.fillStyle = noteColor; ctx.globalAlpha = 0.7; ctx.fill();
-
-  // card background
-  const cardX = s.x - boxW/2, cardY = s.y - 10*state.zoom - boxH;
-  ctx.fillStyle = getCss("--paper"); ctx.globalAlpha = 0.92;
-  ctx.fillRect(cardX, cardY, boxW, boxH);
-  ctx.strokeStyle = noteColor; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.5;
-  ctx.strokeRect(cardX, cardY, boxW, boxH);
-
-  // text
-  ctx.fillStyle = getCss("--ink"); ctx.globalAlpha = 0.8; ctx.textAlign = "left";
-  lines.forEach((line, i) => {
-    ctx.fillText(line, cardX + padX, cardY + padY + (i+1)*lineH - 3);
-  });
-
-  // author + time
-  ctx.font = Math.max(8, 9*state.zoom) + 'px ' + getCss("--mono");
-  ctx.fillStyle = noteColor; ctx.globalAlpha = 0.5;
-  const meta = note.author + (note.time ? ' · ' + note.time : '');
-  ctx.fillText(meta, cardX + padX, cardY + boxH - padY + 2);
-
-  ctx.restore();
-}
-
-function wrapText(c, text, maxW){
-  const words = text.split(' ');
-  const lines = []; let line = '';
-  for(const w of words){
-    const test = line ? line + ' ' + w : w;
-    if(c.measureText(test).width > maxW && line){
-      lines.push(line); line = w;
-    } else { line = test; }
-  }
-  if(line) lines.push(line);
-  return lines.length ? lines : [''];
-}
-
-function drawZine(zine){
-  const s = worldToScreen(zine.x, zine.y);
-  const zc = getCss("--zine");
-  const sc = state.zoom;
-  const bw = 36*sc, bh = 48*sc;
-  const bx = s.x - bw/2, by = s.y - bh/2;
-
-  // book shape
-  ctx.save();
-  ctx.fillStyle = getCss("--paper"); ctx.globalAlpha = 0.95;
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = zc; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.7;
-  ctx.strokeRect(bx, by, bw, bh);
-  // spine
-  ctx.beginPath(); ctx.moveTo(bx + 5*sc, by); ctx.lineTo(bx + 5*sc, by + bh);
-  ctx.strokeStyle = zc; ctx.lineWidth = 1; ctx.globalAlpha = 0.3; ctx.stroke();
-  // lines on cover
-  for(let i = 1; i <= 3; i++){
-    const ly = by + 12*sc + i*7*sc;
-    ctx.beginPath(); ctx.moveTo(bx + 10*sc, ly); ctx.lineTo(bx + bw - 6*sc, ly);
-    ctx.strokeStyle = zc; ctx.lineWidth = 0.8; ctx.globalAlpha = 0.2; ctx.stroke();
-  }
-  ctx.restore();
-
-  // title below
-  ctx.font = '600 ' + Math.max(10, 12*sc) + 'px ' + getCss("--sans");
-  ctx.fillStyle = zc; ctx.globalAlpha = 0.8; ctx.textAlign = "center";
-  ctx.fillText(zine.title, s.x, s.y + bh/2 + 14*sc);
-  // page count
-  ctx.font = Math.max(8, 9*sc) + 'px ' + getCss("--mono");
-  ctx.globalAlpha = 0.45;
-  ctx.fillText((zine.pages || '?') + ' pages', s.x, s.y + bh/2 + 26*sc);
-  // author
-  ctx.fillText(zine.author, s.x, s.y + bh/2 + 37*sc);
-  ctx.globalAlpha = 1; ctx.textAlign = "left";
-}
-
-function drawYou(){
-  const cx=W()/2, cy=H()/2;
-  ctx.strokeStyle=getCss("--ink"); ctx.lineWidth=2; ctx.beginPath();
-  ctx.moveTo(cx-9,cy); ctx.lineTo(cx+9,cy); ctx.moveTo(cx,cy-9); ctx.lineTo(cx,cy+9); ctx.stroke();
-  ctx.font='10px '+getCss("--mono"); ctx.fillStyle=getCss("--ink-soft"); ctx.textAlign="left";
-  ctx.fillText("YOU", cx+12, cy+13);
-}
-
-function drawOtherUsers(){
-  for(const [uid, u] of state.users){
-    if(uid === state.userId) continue;
-    const s = worldToScreen(u.x, u.y);
-    const avatarImg = u.avatarUrl ? loadAvatarImage(u.avatarUrl) : null;
-    const hasAvatar = avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0;
-    if(hasAvatar){
-      const r = 10 * state.zoom;
-      ctx.save();
-      ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI*2); ctx.closePath(); ctx.clip();
-      ctx.drawImage(avatarImg, s.x - r, s.y - r, r*2, r*2);
-      ctx.restore();
-      ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI*2);
-      ctx.strokeStyle = getCss("--ink-soft"); ctx.lineWidth = 1.2; ctx.stroke();
-    } else {
-      ctx.strokeStyle = getCss("--ink-soft"); ctx.lineWidth = 1.5; ctx.beginPath();
-      ctx.moveTo(s.x-6, s.y); ctx.lineTo(s.x+6, s.y);
-      ctx.moveTo(s.x, s.y-6); ctx.lineTo(s.x, s.y+6); ctx.stroke();
-    }
-    ctx.font = '9px '+getCss("--mono"); ctx.fillStyle = getCss("--ink-soft");
-    ctx.textAlign = "left"; ctx.fillText(u.name, s.x+14, s.y+4);
-  }
-}
-
-function tick(){
-  drawPaper();
-  let hearing = [], liveAudible = false;
-  for(const st of state.stations){
-    if(st.hasAudio){
-      const target = audibility(st);
-      // set volume on <audio> element
-      if(st._audio){
-        st._audio.volume = Math.min(1, target);
-        if(st._audio.paused && target > 0.01) st._audio.play().catch(() => {});
-      }
-      // set volume on broadcast gain
-      if(st._bGain && audioCtx) st._bGain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.08);
-      if(target > 0.02){ hearing.push(st); if(st.live) liveAudible = true; }
-    }
-    drawStation(st);
-  }
-  for(const note of state.notes) drawNote(note);
-  for(const zine of state.zines) drawZine(zine);
-  drawOtherUsers();
-  drawYou();
-
-  const h = document.getElementById("hearing");
-  if(hearing.length === 0){ h.textContent = "standing in silence"; h.className = ""; }
-  else {
-    const names = hearing.map(s => s.name).slice(0,4).join(", ");
-    h.innerHTML = "now hearing: " + names + (hearing.length > 4 ? " ..." : "");
-    h.className = hearing.some(s => s.live) ? "air" : "now";
-  }
-  document.getElementById("fbWarn").classList.toggle("show", liveAudible);
-  updatePlayer();
-  updateMicIndicator();
-  requestAnimationFrame(tick);
-}
-
-// ---- PAN + ZOOM + TAP ------------------------------------------------------
-let dragging=false, lastX=0, lastY=0, moved=0;
-
-canvas.addEventListener("pointerdown", e => {
-  if(state.placingZine){
-    const w = screenToWorld(e.clientX, e.clientY);
-    openZinePanel(e.clientX, e.clientY, w); setPlacingZine(false); return;
-  }
-  if(state.placingNote){
-    const w = screenToWorld(e.clientX, e.clientY);
-    openNotePanel(e.clientX, e.clientY, w); setPlacingNote(false); return;
-  }
-  if(state.placing){
-    const w = screenToWorld(e.clientX, e.clientY);
-    openPanel(e.clientX, e.clientY, w); setPlacing(false); return;
-  }
-  dragging=true; moved=0; lastX=e.clientX; lastY=e.clientY;
-  canvas.classList.add("grabbing"); canvas.setPointerCapture(e.pointerId);
-  closeActions();
-});
-canvas.addEventListener("pointermove", e => {
-  if(!dragging) return;
-  const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
-  moved += Math.abs(dx)+Math.abs(dy);
-  state.you.x -= dx/state.zoom; state.you.y -= dy/state.zoom;
-  if(socket) socket.volatile.emit('move', state.you);
-});
-canvas.addEventListener("pointerup", e => {
-  dragging=false; canvas.classList.remove("grabbing");
-  if(moved < 5) hitStation(e.clientX, e.clientY);
-});
-canvas.addEventListener("wheel", e => {
-  e.preventDefault();
-  state.zoom = Math.min(2.4, Math.max(0.03, state.zoom * Math.exp(-e.deltaY*0.0012)));
-}, {passive:false});
-
-canvas.addEventListener("dragover", e => e.preventDefault());
-canvas.addEventListener("drop", e => {
-  e.preventDefault();
-  const file = [...e.dataTransfer.files].find(f => f.type.startsWith("audio"));
-  if(!file) return;
-  ensureAudio();
-  const w = screenToWorld(e.clientX, e.clientY);
-  const name = file.name.replace(/\.[^.]+$/,"");
-  socket.emit('place-station', { name, x: w.x, y: w.y });
-  // the server will respond with station-placed, then we feed it
-  const waitForStation = async (st) => {
-    if(st.name === name && Math.abs(st.x - w.x) < 1){
-      const localSt = findStation(st.id);
-      if(!localSt) return;
-      feedFromBlob(localSt, file);
-      openPlayer(localSt); showToast("playing — walk around to hear spatial audio");
-      try {
-        const result = await uploadAudio(file);
-        feedFromFile(localSt, result.fileId);
-        socket.emit('station-audio', { stationId: st.id, audioFileId: result.fileId });
-      } catch(e){ console.warn('upload failed, playing local blob', e); }
-    }
-  };
-  socket.once('station-placed', waitForStation);
-});
-
-function findStation(id){ return state.stations.find(s => s.id === id); }
-
-function hitStation(sx, sy){
-  // check zines first
-  for(let i = state.zines.length-1; i >= 0; i--){
-    const z = state.zines[i], p = worldToScreen(z.x, z.y);
-    if(Math.hypot(p.x-sx, p.y-sy) < 40){ openZineActions(z, sx, sy); return; }
-  }
-  // then notes
-  for(let i = state.notes.length-1; i >= 0; i--){
-    const n = state.notes[i], p = worldToScreen(n.x, n.y);
-    if(Math.hypot(p.x-sx, p.y-sy) < 40){ openNoteActions(n, sx, sy); return; }
-  }
-  for(let i = state.stations.length-1; i >= 0; i--){
-    const st = state.stations[i], p = worldToScreen(st.x, st.y);
-    if(Math.hypot(p.x-sx, p.y-sy) < 26){
-      openPlayer(st);
-      return;
-    }
-  }
-  closeActions();
-}
-
-// ---- STATION ACTION MENU ---------------------------------------------------
-const actionsEl = document.getElementById("actions");
-function openActions(st, sx, sy){
-  actionsEl.innerHTML = "";
-  const add = (label, cls, fn) => {
-    const b = document.createElement("button");
-    b.textContent = label; if(cls) b.className = cls;
-    b.onclick = () => { closeActions(); fn(); };
-    actionsEl.appendChild(b);
-  };
-
-  add("listen", null, () => openPlayer(st));
-  add("copy link", null, () => copyStationLink(st));
-
-  if(st.live && st.type !== 'broadcast') add("stop on air", "air", () => {
-    stopStationAudio(st); st.hasAudio = false; st.live = false; st.type = 'empty';
-    socket.emit('stop-on-air', st.id);
-    closePlayer(); showToast("off air");
-  });
-  else if(st.type !== 'broadcast') add("go on air", "air", async () => {
-    await feedLive(st);
-    openPlayer(st);
-    showToast("you are on air — broadcasting live");
-  });
-
-  if(st.type === 'broadcast') add("stop broadcast", "broadcast", () => {
-    stopStationAudio(st); st.hasAudio = false; st.live = false; st.type = 'empty';
-    socket.emit('stop-on-air', st.id);
-    closePlayer(); showToast("broadcast stopped");
-  });
-  else add("feed broadcast", "broadcast", () => {
-    feedBroadcast(st);
-    openPlayer(st);
-    showToast("subversive radio piped in");
-  });
-
-  add("record a clip", null, () => recordInto(st));
-  add("leave a note", "note-act", () => {
-    const w = { x: st.x + 60, y: st.y - 40 };
-    const p = worldToScreen(w.x, w.y);
-    openNotePanel(p.x, p.y, w);
-  });
-  add("remove station", null, () => {
-    stopStationAudio(st);
-    state.stations = state.stations.filter(s => s !== st);
-    socket.emit('remove-station', st.id);
-  });
-
-  actionsEl.style.left = Math.min(sx, window.innerWidth-180)+"px";
-  actionsEl.style.top = Math.min(sy, window.innerHeight-180)+"px";
-  actionsEl.classList.add("open");
-}
-function closeActions(){ actionsEl.classList.remove("open"); }
-
-// ---- RECORDING -------------------------------------------------------------
-let mediaRec=null, recChunks=[], recTimer=null, recTarget=null, recStart=0;
-
-async function recordInto(station){
-  ensureAudio();
-  let stream; try{ stream = await getMic(); }catch(e){ return; }
-  recTarget = station; recChunks = [];
-  mediaRec = new MediaRecorder(stream);
-  mediaRec.ondataavailable = e => { if(e.data.size) recChunks.push(e.data); };
-  mediaRec.onstop = async () => {
-    const target = recTarget;
-    const blob = new Blob(recChunks, {type: recChunks[0]?recChunks[0].type:"audio/webm"});
-    teardownRec();
-    if(target && blob.size > 0){
-      feedFromBlob(target, blob);
-      openPlayer(target);
-      showToast("recording saved — now playing");
-      try {
-        const result = await uploadAudio(blob);
-        feedFromFile(target, result.fileId);
-        socket.emit('station-audio', { stationId: target.id, audioFileId: result.fileId });
-      } catch(e){ console.warn('upload failed, playing local blob', e); }
-    }
-  };
-  mediaRec.start();
-  showRecBar(true);
-}
-
-function showRecBar(on){
-  const bar = document.getElementById("recbar");
-  bar.classList.toggle("show", on);
-  if(on){
-    panel.classList.add("open");
-    document.getElementById("panel").querySelector("h3").firstChild.textContent = "recording";
-    recStart = Date.now();
-    recTimer = setInterval(() => {
-      const s = Math.floor((Date.now()-recStart)/1000);
-      document.getElementById("rectime").textContent = Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
-    }, 250);
-  }
-}
-
-function teardownRec(){
-  clearInterval(recTimer); recTimer=null; mediaRec=null; recTarget=null;
-  document.getElementById("recbar").classList.remove("show");
-  document.getElementById("rectime").textContent = "0:00";
-  if(!state.pending) closePanel();
-}
-
-document.getElementById("recstop").addEventListener("click", () => {
-  if(mediaRec && mediaRec.state !== "inactive") mediaRec.stop();
-});
-
-// ---- COMPOSE PANEL ---------------------------------------------------------
-const panel = document.getElementById("panel");
-const stName = document.getElementById("stName");
-const stFile = document.getElementById("stFile");
-let pendingFile=null, pendingMode=null, pendingBlob=null;
-
-function openPanel(sx, sy, world){
-  state.pending = world; pendingFile=null; pendingMode=null; pendingBlob=null;
-  stName.value = "";
-  document.querySelectorAll(".src").forEach(s => s.classList.remove("chosen"));
-  document.getElementById("srcFile").querySelector(".tag").textContent = "mp3 / wav / ogg";
-  document.getElementById("noteAir").classList.remove("show");
-  document.getElementById("noteRec").classList.remove("show");
-  document.getElementById("noteBroadcast").classList.remove("show");
-  document.getElementById("broadcastUrl").style.display = "none";
-  panel.querySelector("h3").firstChild.textContent = "new station";
-  const px = Math.min(sx, window.innerWidth-304), py = Math.min(sy, window.innerHeight-320);
-  panel.style.left = Math.max(12,px)+"px"; panel.style.top = Math.max(64,py)+"px";
-  panel.classList.add("open"); setTimeout(() => stName.focus(), 30);
-}
-
-function closePanel(){ panel.classList.remove("open"); state.pending=null; pendingFile=null; pendingBlob=null; pendingMode=null; }
-
-stFile.addEventListener("change", e => {
-  const f = e.target.files[0]; if(!f) return;
-  pendingFile=f; pendingMode="file"; pendingBlob=null;
-  document.getElementById("srcFile").classList.add("chosen");
-  document.getElementById("srcRec").classList.remove("chosen");
-  document.getElementById("srcAir").classList.remove("chosen");
-  document.getElementById("srcBroadcast").classList.remove("chosen");
-  document.getElementById("srcFile").querySelector(".tag").textContent = f.name.slice(0,18);
-  hideAllNotes();
-});
-
-document.getElementById("srcAir").addEventListener("click", () => {
-  pendingMode="air"; pendingFile=null; pendingBlob=null;
-  document.getElementById("srcAir").classList.add("chosen");
-  document.getElementById("srcFile").classList.remove("chosen");
-  document.getElementById("srcRec").classList.remove("chosen");
-  document.getElementById("srcBroadcast").classList.remove("chosen");
-  hideAllNotes();
-  document.getElementById("noteAir").classList.add("show");
-});
-
-document.getElementById("srcBroadcast").addEventListener("click", () => {
-  pendingMode="broadcast"; pendingFile=null; pendingBlob=null;
-  document.getElementById("srcBroadcast").classList.add("chosen");
-  document.getElementById("srcFile").classList.remove("chosen");
-  document.getElementById("srcRec").classList.remove("chosen");
-  document.getElementById("srcAir").classList.remove("chosen");
-  hideAllNotes();
-  document.getElementById("noteBroadcast").classList.add("show");
-  document.getElementById("broadcastUrl").style.display = "block";
-});
-
-document.getElementById("srcRec").addEventListener("click", async () => {
-  ensureAudio();
-  let stream; try{ stream = await getMic(); }catch(e){ return; }
-  pendingMode="rec"; pendingFile=null;
-  document.getElementById("srcRec").classList.add("chosen");
-  document.getElementById("srcFile").classList.remove("chosen");
-  document.getElementById("srcAir").classList.remove("chosen");
-  document.getElementById("srcBroadcast").classList.remove("chosen");
-  hideAllNotes();
-  document.getElementById("noteRec").classList.add("show");
-
-  recChunks=[];
-  mediaRec = new MediaRecorder(stream);
-  mediaRec.ondataavailable = e => { if(e.data.size) recChunks.push(e.data); };
-  mediaRec.onstop = () => {
-    pendingBlob = new Blob(recChunks, {type: recChunks[0]?recChunks[0].type:"audio/webm"});
-    clearInterval(recTimer); recTimer=null;
-    document.getElementById("recbar").classList.remove("show");
-    document.getElementById("srcRec").querySelector(".tag").textContent = "clip ready";
-  };
-  mediaRec.start();
-  document.getElementById("recbar").classList.add("show");
-  recStart = Date.now();
-  recTimer = setInterval(() => {
-    const s = Math.floor((Date.now()-recStart)/1000);
-    document.getElementById("rectime").textContent = Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
-  }, 250);
-});
-
-function hideAllNotes(){
-  document.getElementById("noteAir").classList.remove("show");
-  document.getElementById("noteRec").classList.remove("show");
-  document.getElementById("noteBroadcast").classList.remove("show");
-  document.getElementById("broadcastUrl").style.display = "none";
-}
-
-document.getElementById("cancelBtn").addEventListener("click", () => {
-  if(mediaRec && mediaRec.state !== "inactive"){ try{mediaRec.stop();}catch(e){} }
-  clearInterval(recTimer); recTimer=null;
-  document.getElementById("recbar").classList.remove("show");
-  closePanel();
-});
-
-document.getElementById("placeBtn").addEventListener("click", async () => {
-  if(!state.pending) return;
-  ensureAudio();
-  const name = stName.value.trim() || "untitled station";
-  socket.emit('place-station', { name, x: state.pending.x, y: state.pending.y });
-
-  const mode = pendingMode;
-  const file = pendingFile;
-  const blob = pendingBlob;
-  const bUrl = document.getElementById("broadcastUrl").value.trim() || BROADCAST_DEFAULT;
-
-  const onPlaced = async (stData) => {
-    const st = findStation(stData.id);
-    if(!st) return;
-    if(mode === "file" && file){
-      feedFromBlob(st, file);
-      openPlayer(st); showToast("playing — walk around to hear spatial audio");
-      try {
-        const result = await uploadAudio(file);
-        feedFromFile(st, result.fileId);
-        socket.emit('station-audio', { stationId: st.id, audioFileId: result.fileId });
-      } catch(e){ console.warn('upload failed, playing local blob', e); }
-    }
-    else if(mode === "rec" && blob){
-      feedFromBlob(st, blob);
-      openPlayer(st); showToast("recording placed — now looping");
-      try {
-        const result = await uploadAudio(blob);
-        feedFromFile(st, result.fileId);
-        socket.emit('station-audio', { stationId: st.id, audioFileId: result.fileId });
-      } catch(e){ console.warn('upload failed, playing local blob', e); }
-    }
-    else if(mode === "air"){
-      await feedLive(st);
-      openPlayer(st); showToast("you are on air — broadcasting live");
-    }
-    else if(mode === "broadcast"){
-      feedBroadcast(st, bUrl);
-      openPlayer(st); showToast("subversive radio piped in");
-    }
-  };
-  socket.once('station-placed', onPlaced);
-
-  document.getElementById("recbar").classList.remove("show");
-  document.getElementById("rectime").textContent = "0:00";
-  closePanel();
-});
-
-// ---- NOTES -----------------------------------------------------------------
-let notePending = null;
-const notePanel = document.getElementById("notePanel");
-
-function openNotePanel(sx, sy, world){
-  notePending = world;
-  document.getElementById("noteText").value = "";
-  const px = Math.min(sx, window.innerWidth-296), py = Math.min(sy, window.innerHeight-200);
-  notePanel.style.left = Math.max(12,px)+"px"; notePanel.style.top = Math.max(64,py)+"px";
-  notePanel.classList.add("open");
-  setTimeout(() => document.getElementById("noteText").focus(), 30);
-}
-
-function closeNotePanel(){ notePanel.classList.remove("open"); notePending = null; }
-
-document.getElementById("noteCancelBtn").addEventListener("click", closeNotePanel);
-
-document.getElementById("notePlaceBtn").addEventListener("click", () => {
-  if(!notePending) return;
-  const text = document.getElementById("noteText").value.trim();
-  if(!text){ closeNotePanel(); return; }
-  socket.emit('place-note', { text, x: notePending.x, y: notePending.y });
-  closeNotePanel();
-});
-
-function openNoteActions(note, sx, sy){
-  actionsEl.innerHTML = "";
-  const add = (label, cls, fn) => {
-    const b = document.createElement("button");
-    b.textContent = label; if(cls) b.className = cls;
-    b.onclick = () => { closeActions(); fn(); };
-    actionsEl.appendChild(b);
-  };
-  add("remove note", null, () => {
-    state.notes = state.notes.filter(n => n !== note);
-    socket.emit('remove-note', note.id);
-  });
-  actionsEl.style.left = Math.min(sx, window.innerWidth-160)+"px";
-  actionsEl.style.top = Math.min(sy, window.innerHeight-60)+"px";
-  actionsEl.classList.add("open");
-}
-
-// ---- RADIO PLAYER ----------------------------------------------------------
-const radioEl = document.getElementById("radio");
-const radioVis = document.getElementById("radioVis");
-const radioStations = document.getElementById("radioStations");
-let playerStation = null, playerMuted = false, playerVolScale = 1, radioListOpen = false;
-
-// create visualizer bars
-for(let i=0;i<16;i++){
-  const b = document.createElement("div");
-  b.className = "bar"; b.style.height = "2px";
-  radioVis.appendChild(b);
-}
-
-function walkTo(x, y){
-  const startX = state.you.x, startY = state.you.y;
-  const dist = Math.hypot(x - startX, y - startY);
-  if(dist < 10) return;
-  const duration = Math.min(600, Math.max(200, dist * 0.15));
-  const start = performance.now();
-  function animate(now){
-    const t = Math.min(1, (now - start) / duration);
-    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-    state.you.x = startX + (x - startX) * ease;
-    state.you.y = startY + (y - startY) * ease;
-    if(socket) socket.volatile.emit('move', state.you);
-    if(t < 1) requestAnimationFrame(animate);
-  }
-  requestAnimationFrame(animate);
-}
-
-function openPlayer(st){
-  ensureAudio();
-  playerStation = st;
-  radioEl.classList.add("open");
-  // auto-walk to station if out of range
-  const d = Math.hypot(st.x - state.you.x, st.y - state.you.y);
-  if(d > st.reach * 0.6) walkTo(st.x, st.y);
-  // resume playback on user tap (bypasses autoplay policy)
-  if(st._audio && st._audio.paused) st._audio.play().catch(() => {});
-  document.getElementById("radioTitle").textContent = st.name;
-  const avatarEl = document.getElementById("radioAvatar");
-  if(st.avatarUrl){
-    avatarEl.style.display = ""; avatarEl.querySelector("img").src = st.avatarUrl;
-  } else { avatarEl.style.display = "none"; }
-  updateRadioTag(st);
-  playerMuted = false;
-  document.getElementById("radioMute").textContent = "mute";
-  document.getElementById("radioMute").classList.remove("active");
-  document.getElementById("radioVol").value = 100;
-  playerVolScale = 1;
-}
-
-function updateRadioTag(st){
-  const tag = document.getElementById("radioTag");
-  if(st.type === 'broadcast'){ tag.textContent = "broadcast"; tag.style.color = getCss("--broadcast"); }
-  else if(st.live){ tag.textContent = "on air"; tag.style.color = getCss("--live"); }
-  else if(st.hasAudio){ tag.textContent = "playing"; tag.style.color = getCss("--signal"); }
-  else { tag.textContent = "silent"; tag.style.color = getCss("--ink-soft"); }
-}
-
-function closePlayer(){ playerStation = null;
-  document.getElementById("radioTitle").textContent = "no station selected";
-  document.getElementById("radioTag").textContent = "tap a station or choose from list";
-  document.getElementById("radioTag").style.color = getCss("--ink-soft");
-  document.getElementById("radioAvatar").style.display = "none";
-}
-
-// toggle station list
-document.getElementById("radioToggle").addEventListener("click", () => {
-  radioListOpen = !radioListOpen;
-  document.getElementById("radioList").classList.toggle("open", radioListOpen);
-  document.getElementById("radioToggle").textContent = radioListOpen ? "▼" : "▲";
-});
-
-document.getElementById("radioActions").addEventListener("click", () => {
-  if(!playerStation) return;
-  const rect = radioEl.getBoundingClientRect();
-  openActions(playerStation, rect.right - 100, rect.top - 10);
-});
-
-document.getElementById("radioMute").addEventListener("click", () => {
-  playerMuted = !playerMuted;
-  const btn = document.getElementById("radioMute");
-  btn.textContent = playerMuted ? "unmute" : "mute";
-  btn.classList.toggle("active", playerMuted);
-});
-
-document.getElementById("radioVol").addEventListener("input", e => {
-  playerVolScale = parseInt(e.target.value) / 100;
-});
-
-function copyStationLink(st){
-  const roomId = window.location.pathname.replace(/^\//,'') || 'default';
-  const base = window.location.origin;
-  const url = base + '/' + roomId + '?station=' + st.id;
-  navigator.clipboard.writeText(url).then(() => {
-    showToast("link copied — share it to listen");
-  }).catch(() => {
-    prompt("Copy this link:", url);
-  });
-}
-
-function showToast(msg){
-  let t = document.getElementById("toast");
-  if(!t){
-    t = document.createElement("div"); t.id = "toast";
-    document.body.appendChild(t);
-  }
-  t.textContent = msg; t.classList.add("show");
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove("show"), 2200);
-}
-
-function updatePlayer(){
-  // update the now-playing section
-  if(playerStation){
-    const st = playerStation;
-    if(!state.stations.includes(st)){ closePlayer(); return; }
-    const d = Math.hypot(st.x - state.you.x, st.y - state.you.y);
-    const heard = audibility(st);
-    document.getElementById("radioDist").textContent =
-      heard > 0.01 ? Math.round(d) + "m · " + Math.round(heard*100) + "%" : Math.round(d) + "m";
-    updateRadioTag(st);
-
-    // visualizer bars
-    const bars = radioVis.children;
-    if(st._analyser && st._bins){
-      st._analyser.getByteFrequencyData(st._bins);
-      const step = Math.floor(st._bins.length / bars.length);
-      for(let i=0;i<bars.length;i++){
-        const v = st._bins[i * step] / 255;
-        bars[i].style.height = Math.max(2, v * 28) + "px";
-        const accent = st.live ? (st.type === 'broadcast' ? getCss("--broadcast") : getCss("--live")) : getCss("--signal");
-        bars[i].style.background = heard > 0.01 ? accent : getCss("--ink-faint");
-      }
-    } else if(st._audio && !st._audio.paused && heard > 0.01){
-      const accent = st.live ? (st.type === 'broadcast' ? getCss("--broadcast") : getCss("--live")) : getCss("--signal");
-      for(let i=0;i<bars.length;i++){
-        const v = 0.2 + Math.sin(Date.now()*0.004 + i*0.5 + st.seed)*0.15;
-        bars[i].style.height = Math.max(2, v * 28) + "px";
-        bars[i].style.background = accent;
-      }
-    } else {
-      for(let i=0;i<bars.length;i++){ bars[i].style.height = "2px"; bars[i].style.background = getCss("--ink-faint"); }
-    }
-
-    // apply mute / volume override
-    const base = audibility(st);
-    const vol = playerMuted ? 0 : base * playerVolScale;
-    if(st._audio) st._audio.volume = Math.min(1, vol);
-    if(st._bGain && audioCtx) st._bGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.08);
-  } else {
-    const bars = radioVis.children;
-    for(let i=0;i<bars.length;i++){ bars[i].style.height = "2px"; bars[i].style.background = getCss("--ink-faint"); }
-  }
-
-  // update station list
-  updateStationList();
-}
-
-function updateStationList(){
-  const allStations = state.stations;
-  // only show stations that have audio (recording, live, broadcast)
-  const active = allStations.filter(s => s.hasAudio || s.live);
-  document.getElementById("radioCount").textContent = active.length;
-
-  if(active.length === 0){
-    radioStations.innerHTML = '<div class="no-stations">no stations on air yet</div>';
-    return;
-  }
-
-  // clear the "no stations" message if present
-  const noMsg = radioStations.querySelector('.no-stations');
-  if(noMsg) noMsg.remove();
-
-  // sort: live first, then recordings, then by distance
-  const sorted = [...active].sort((a,b) => {
-    const aLive = a.live ? 2 : a.hasAudio ? 1 : 0;
-    const bLive = b.live ? 2 : b.hasAudio ? 1 : 0;
-    if(aLive !== bLive) return bLive - aLive;
-    return audibility(b) - audibility(a);
-  });
-
-  while(radioStations.children.length > sorted.length) radioStations.lastChild.remove();
-  while(radioStations.children.length < sorted.length){
-    const row = document.createElement("div");
-    row.className = "station-row";
-    row.innerHTML = '<span class="sr-dot"></span><div class="sr-avatar" style="display:none"><img></div><div class="sr-info"><div class="sr-name"></div><div class="sr-type"></div></div><div class="sr-vol"><div class="sr-vol-fill"></div></div><span class="sr-dist"></span><button class="sr-play">play</button>';
-    radioStations.appendChild(row);
-  }
-
-  for(let i=0;i<sorted.length;i++){
-    const st = sorted[i], row = radioStations.children[i];
-    const vol = audibility(st);
-    const d = Math.round(Math.hypot(st.x - state.you.x, st.y - state.you.y));
-    const isBroadcast = st.type === 'broadcast';
-    const accent = st.live ? (isBroadcast ? getCss("--broadcast") : getCss("--live")) :
-                   st.hasAudio ? getCss("--signal") : getCss("--ink-soft");
-
-    row.classList.toggle("active", playerStation === st);
-    row.querySelector(".sr-dot").style.background = accent;
-    row.querySelector(".sr-name").textContent = st.name;
-
-    let typeText;
-    if(st.type === 'broadcast') typeText = "broadcast";
-    else if(st.live) typeText = "live · on air";
-    else if(st.hasAudio) typeText = "recording";
-    else typeText = "playing";
-    row.querySelector(".sr-type").textContent = typeText;
-    row.querySelector(".sr-type").style.color = accent;
-
-    const avatarEl = row.querySelector(".sr-avatar");
-    if(st.avatarUrl){
-      avatarEl.style.display = ""; avatarEl.querySelector("img").src = st.avatarUrl;
-    } else { avatarEl.style.display = "none"; }
-
-    row.querySelector(".sr-vol-fill").style.width = Math.round(vol*100) + "%";
-    row.querySelector(".sr-vol-fill").style.background = accent;
-    row.querySelector(".sr-dist").textContent = d + "m";
-
-    // play button
-    const playBtn = row.querySelector(".sr-play");
-    playBtn.style.color = accent;
-    playBtn.style.borderColor = accent;
-    playBtn.textContent = (playerStation === st) ? "● tuned" : "▶ play";
-    playBtn.onclick = (e) => { e.stopPropagation(); openPlayer(st); };
-
-    row.onclick = () => { openPlayer(st); };
-  }
-}
-
-function updateHearingPanel(){}
-
-// ---- MIC INDICATOR ---------------------------------------------------------
-let onAirStation = null;
-
-function updateMicIndicator(){
-  const mic = document.getElementById("micIndicator");
-  const liveStation = state.stations.find(st => st.live && st.type === 'live' && st.owner === state.userId);
-  if(liveStation){
-    onAirStation = liveStation;
-    mic.classList.add("show");
-    document.getElementById("micLabel").textContent = "on air · " + liveStation.name;
-  } else {
-    onAirStation = null;
-    mic.classList.remove("show");
-  }
-}
-
-// ---- ZINES -----------------------------------------------------------------
-let zinePending = null, zinePendingFile = null;
-const zinePanel = document.getElementById("zinePanel");
-const zineReader = document.getElementById("zineReader");
-let readerPdf = null, readerPage = 1, readerTotal = 1;
-const zineDataCache = new Map();
-
-function openZinePanel(sx, sy, world){
-  zinePending = world; zinePendingFile = null;
-  document.getElementById("zineName").value = "";
-  document.getElementById("zineDropLabel").textContent = "choose a pdf";
-  document.getElementById("zineDrop").classList.remove("has-file");
-  document.getElementById("zineFile").value = "";
-  const px = Math.min(sx, window.innerWidth-296), py = Math.min(sy, window.innerHeight-220);
-  zinePanel.style.left = Math.max(12,px)+"px"; zinePanel.style.top = Math.max(64,py)+"px";
-  zinePanel.classList.add("open");
-  setTimeout(() => document.getElementById("zineName").focus(), 30);
-}
-
-function closeZinePanel(){ zinePanel.classList.remove("open"); zinePending = null; zinePendingFile = null; }
-
-document.getElementById("zineFile").addEventListener("change", e => {
-  const f = e.target.files[0]; if(!f) return;
-  if(f.size > 500*1024*1024){ alert("PDF too large — max 500MB"); return; }
-  zinePendingFile = f;
-  document.getElementById("zineDropLabel").textContent = f.name.slice(0,24);
-  document.getElementById("zineDrop").classList.add("has-file");
-  if(!document.getElementById("zineName").value.trim()){
-    document.getElementById("zineName").value = f.name.replace(/\.pdf$/i,"");
-  }
-});
-
-document.getElementById("zineCancelBtn").addEventListener("click", closeZinePanel);
-
-document.getElementById("zinePlaceBtn").addEventListener("click", async () => {
-  if(!zinePending || !zinePendingFile) return;
-  const title = document.getElementById("zineName").value.trim() || zinePendingFile.name.replace(/\.pdf$/i,"");
-  const btn = document.getElementById("zinePlaceBtn");
-  btn.textContent = "uploading..."; btn.disabled = true;
-  try {
-    const form = new FormData();
-    form.append('pdf', zinePendingFile);
-    const resp = await fetch('/api/zine/upload', { method: 'POST', body: form });
-    if(!resp.ok) throw new Error('upload failed');
-    const { fileId, originalName, size } = await resp.json();
-    socket.emit('place-zine', { title, x: zinePending.x, y: zinePending.y, fileId, originalName, size });
-    closeZinePanel();
-  } catch(e){ alert("Upload failed: " + e.message); }
-  btn.textContent = "pin to field"; btn.disabled = false;
-});
-
-// drag+drop PDFs onto canvas
-canvas.addEventListener("drop", async e => {
-  const pdf = [...e.dataTransfer.files].find(f => f.type === "application/pdf");
-  if(!pdf) return;
-  e.preventDefault();
-  if(pdf.size > 500*1024*1024){ alert("PDF too large — max 500MB"); return; }
-  const w = screenToWorld(e.clientX, e.clientY);
-  const title = pdf.name.replace(/\.pdf$/i,"");
-  try {
-    const form = new FormData();
-    form.append('pdf', pdf);
-    const resp = await fetch('/api/zine/upload', { method: 'POST', body: form });
-    if(!resp.ok) throw new Error('upload failed');
-    const { fileId, originalName, size } = await resp.json();
-    socket.emit('place-zine', { title, x: w.x, y: w.y, fileId, originalName, size });
-  } catch(e){ alert("Upload failed: " + e.message); }
-}, true);
-
-function openZineActions(zine, sx, sy){
-  actionsEl.innerHTML = "";
-  const add = (label, cls, fn) => {
-    const b = document.createElement("button");
-    b.textContent = label; if(cls) b.className = cls;
-    b.onclick = () => { closeActions(); fn(); };
-    actionsEl.appendChild(b);
-  };
-  add("read zine", "zine-act", () => openZineReader(zine));
-  add("remove zine", null, () => {
-    state.zines = state.zines.filter(z => z !== zine);
-    zineDataCache.delete(zine.id);
-    socket.emit('remove-zine', zine.id);
-  });
-  actionsEl.style.left = Math.min(sx, window.innerWidth-160)+"px";
-  actionsEl.style.top = Math.min(sy, window.innerHeight-100)+"px";
-  actionsEl.classList.add("open");
-}
-
-// PDF.js reader
-let pdfjsLoaded = false;
-function loadPdfJs(){
-  if(pdfjsLoaded) return Promise.resolve();
-  return new Promise((resolve) => {
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    s.onload = () => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      pdfjsLoaded = true; resolve();
-    };
-    document.head.appendChild(s);
-  });
-}
-
-async function openZineReader(zine){
-  await loadPdfJs();
-  document.getElementById("readerTitle").textContent = zine.title;
-  zineReader.classList.add("open");
-  document.getElementById("readerPageNum").textContent = "loading...";
-
-  try {
-    const url = '/api/zine/' + zine.id + '/pdf';
-    readerPdf = await pdfjsLib.getDocument(url).promise;
-    readerTotal = readerPdf.numPages;
-    readerPage = 1;
-    renderPage();
-  } catch(e){
-    alert("Could not load zine");
-    closeZineReader();
-  }
-}
-
-async function renderPage(){
-  if(!readerPdf) return;
-  const page = await readerPdf.getPage(readerPage);
-  const viewport = page.getViewport({scale: 2});
-  const cv = document.getElementById("readerCanvas");
-  cv.width = viewport.width; cv.height = viewport.height;
-  await page.render({ canvasContext: cv.getContext("2d"), viewport }).promise;
-  document.getElementById("readerPageNum").textContent = readerPage + " / " + readerTotal;
-  document.getElementById("readerPageInfo").textContent = readerTotal + " pages";
-}
-
-function closeZineReader(){ zineReader.classList.remove("open"); readerPdf = null; }
-
-document.getElementById("readerCloseBtn").addEventListener("click", closeZineReader);
-document.getElementById("readerPrev").addEventListener("click", () => {
-  if(readerPage > 1){ readerPage--; renderPage(); }
-});
-document.getElementById("readerNext").addEventListener("click", () => {
-  if(readerPage < readerTotal){ readerPage++; renderPage(); }
-});
-
-function setPlacingZine(on){
-  state.placingZine = on; canvas.classList.toggle("placing", on);
-  document.getElementById("zineBtn").textContent = on ? "tap to pin" : "drop a zine";
-  if(on){ setPlacing(false); setPlacingNote(false); }
-}
-
-document.getElementById("zineBtn").addEventListener("click", () => { setPlacingZine(!state.placingZine); });
-
-function setPlacingNote(on){
-  state.placingNote = on; canvas.classList.toggle("placing", on);
-  document.getElementById("noteBtn").textContent = on ? "tap to pin" : "drop a note";
-  if(on) setPlacing(false);
-}
-
-document.getElementById("noteBtn").addEventListener("click", () => { setPlacingNote(!state.placingNote); });
-
-function setPlacing(on){
-  state.placing = on; canvas.classList.toggle("placing", on);
-  document.getElementById("addBtn").textContent = on ? "tap the surface" : "drop a station";
-  if(on) setPlacingNote(false);
-}
-
-document.getElementById("addBtn").addEventListener("click", () => { ensureAudio(); setPlacing(!state.placing); });
-
-function resize(){
-  DPR = Math.min(window.devicePixelRatio||1, 2);
-  canvas.width = window.innerWidth*DPR; canvas.height = window.innerHeight*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-}
-window.addEventListener("resize", resize); resize();
-
-// ---- SOCKET.IO — MULTIPLAYER -----------------------------------------------
-
-function connectToServer(){
-  socket = io(window.location.origin, {
-    transports: ['websocket','polling'],
-    reconnection: true,
-    reconnectionDelay: 500,
-    reconnectionAttempts: Infinity
-  });
-
-  const roomId = window.location.pathname.replace(/^\//,'') || 'default';
-  const userName = document.getElementById("nameInput").value.trim() || 'listener';
+// ---- SOCKET -----------------------------------------------------------------
+function connectSocket() {
+  socket = io({ transports: ['websocket', 'polling'] });
 
   socket.on('connect', () => {
-    socket.emit('join-room', { roomId, name: userName, avatarUrl: myAvatarUrl });
+    socket.emit('join-room', { roomId: 'default', name: state.userName });
   });
 
-  socket.on('room-state', (data) => {
+  socket.on('room-state', data => {
     state.userId = data.userId;
-    data.stations.forEach(s => {
-      if(!findStation(s.id)){
-        const local = makeLocalStation(s);
-        state.stations.push(local);
-        if(s.audioFileId){
-          ensureAudio();
-          feedFromFile(local, s.audioFileId);
-        }
-      }
+    userCount = data.users.length;
+    updateTaskUsers();
+    data.stations.forEach(st => {
+      if (!wins.has(st.id)) createPlayerFromServer(st);
     });
-    if(data.notes) data.notes.forEach(n => {
-      if(!state.notes.find(x => x.id === n.id)) state.notes.push(n);
+    data.notes.forEach(n => {
+      if (!wins.has(n.id)) createNoteFromServer(n);
     });
-    if(data.zines) data.zines.forEach(z => {
-      if(!state.zines.find(x => x.id === z.id)) state.zines.push(z);
+    if (data.zines) data.zines.forEach(z => {
+      if (!wins.has(z.id)) createZineFromServer(z);
     });
-    data.users.forEach(u => state.users.set(u.id, u));
+  });
 
-    // auto-navigate to linked station
-    const params = new URLSearchParams(window.location.search);
-    const targetId = params.get('station');
-    if(targetId){
-      const st = findStation(targetId);
-      if(st){
-        state.you.x = st.x; state.you.y = st.y;
-        if(socket) socket.volatile.emit('move', state.you);
-        setTimeout(() => openPlayer(st), 300);
-      }
-      history.replaceState(null, '', window.location.pathname);
+  socket.on('user-count', c => { userCount = c; updateTaskUsers(); });
+  socket.on('user-joined', () => {});
+  socket.on('user-left', () => {});
+
+  socket.on('note-placed', n => {
+    if (!wins.has(n.id)) createNoteFromServer(n);
+  });
+  socket.on('note-removed', id => { removeWin(id); });
+
+  socket.on('station-placed', st => {
+    if (!wins.has(st.id)) createPlayerFromServer(st);
+  });
+  socket.on('station-removed', id => { removeWin(id); });
+  socket.on('station-audio', data => {
+    const w = wins.get(data.stationId);
+    if (w && data.audioFileId) {
+      w.audioFileId = data.audioFileId;
+      loadAudioForWin(w);
     }
   });
-
-  socket.on('station-placed', (st) => {
-    if(!findStation(st.id)) state.stations.push(makeLocalStation(st));
+  socket.on('station-live', data => {
+    const w = wins.get(data.stationId);
+    if (w) { w.live = true; w.type = 'live'; updateWinTitle(w); }
+  });
+  socket.on('station-off-air', id => {
+    const w = wins.get(id);
+    if (w) { w.live = false; w.type = w.audioFileId ? 'recording' : 'empty'; updateWinTitle(w); }
+  });
+  socket.on('station-broadcast', data => {
+    const w = wins.get(data.stationId);
+    if (w) { w.type = 'broadcast'; w.broadcastUrl = data.broadcastUrl; updateWinTitle(w); }
+  });
+  socket.on('station-updated', data => {
+    const w = wins.get(data.id);
+    if (w) { w.name = data.name; updateWinTitle(w); }
   });
 
-  socket.on('station-removed', (id) => {
-    const st = findStation(id);
-    if(st) stopStationAudio(st);
-    state.stations = state.stations.filter(s => s.id !== id);
+  socket.on('zine-placed', z => {
+    if (!wins.has(z.id)) createZineFromServer(z);
+  });
+  socket.on('zine-removed', id => { removeWin(id); });
+
+  socket.on('live-audio', data => {
+    // receive live PCM and play it
+    const w = wins.get(data.stationId);
+    if (w && w.type === 'live' && data.audio) playLivePCM(w, data.audio);
   });
 
-  socket.on('station-live', (data) => {
-    const st = findStation(data.stationId);
-    if(st){ st.hasAudio = true; st.live = true; st.type = 'live'; }
-  });
-
-  socket.on('station-off-air', (id) => {
-    const st = findStation(id);
-    if(st){ st.live = false; st.hasAudio = false; st.type = 'empty'; stopStationAudio(st); }
-  });
-
-  socket.on('station-broadcast', (data) => {
-    const st = findStation(data.stationId);
-    if(st && !broadcastSockets.has(st.id)){
-      feedBroadcast(st, data.broadcastUrl);
-    }
-  });
-
-  socket.on('station-audio', (data) => {
-    const st = findStation(data.stationId);
-    if(!st) return;
-    st.hasAudio = true; st.live = false; st.type = 'recording';
-    if(data.audioFileId && !st._audio){
-      ensureAudio();
-      feedFromFile(st, data.audioFileId);
-    }
-  });
-
-  // live audio from other users
-  socket.on('live-audio', (data) => {
-    ensureAudio();
-    if(!audioCtx) return;
-    const st = findStation(data.stationId);
-    if(!st) return;
-    if(!st._bGain){
-      const gain = audioCtx.createGain(); gain.gain.value = 0;
-      gain.connect(audioCtx.destination);
-      st._bGain = gain;
-      const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
-      gain.connect(analyser);
-      st._analyser = analyser;
-      st._bins = new Uint8Array(analyser.frequencyBinCount);
-    }
-    try {
-      const int16 = new Int16Array(data.audio);
-      const float32 = new Float32Array(int16.length);
-      for(let i=0;i<int16.length;i++) float32[i] = int16[i]/32768;
-      const buffer = audioCtx.createBuffer(1, float32.length, audioCtx.sampleRate);
-      buffer.getChannelData(0).set(float32);
-      const src = audioCtx.createBufferSource();
-      src.buffer = buffer; src.connect(st._bGain); src.start();
-    } catch(e){}
-  });
-
-  socket.on('note-placed', (n) => {
-    if(!state.notes.find(x => x.id === n.id)) state.notes.push(n);
-  });
-  socket.on('note-removed', (id) => {
-    state.notes = state.notes.filter(n => n.id !== id);
-  });
-
-  socket.on('zine-placed', (z) => {
-    if(!state.zines.find(x => x.id === z.id)) state.zines.push(z);
-  });
-  socket.on('zine-removed', (id) => {
-    state.zines = state.zines.filter(z => z.id !== id);
-    zineDataCache.delete(id);
-  });
-
-  socket.on('user-joined', (u) => { state.users.set(u.id, u); });
-  socket.on('user-left', (id) => { state.users.delete(id); });
-  socket.on('user-moved', (u) => {
-    const existing = state.users.get(u.id);
-    if(existing){ existing.x = u.x; existing.y = u.y; }
-  });
-  socket.on('user-count', (c) => {
-    document.getElementById("userCount").textContent = c > 1 ? c + " in the field" : "";
+  socket.on('kicked', msg => {
+    alert(msg);
+    location.reload();
   });
 }
 
-// ---- ENTRY -----------------------------------------------------------------
+function updateTaskUsers() {
+  document.getElementById('taskUsers').textContent = userCount + ' online';
+}
 
-document.getElementById("enterBtn").addEventListener("click", () => {
+// ---- WINDOW SYSTEM ----------------------------------------------------------
+function createWin(opts) {
+  const el = document.createElement('div');
+  el.className = 'win ' + (opts.extraClass || '');
+  el.style.left = (opts.x || 100) + 'px';
+  el.style.top = (opts.y || 100) + 'px';
+  if (opts.width) el.style.width = opts.width + 'px';
+
+  const titleBar = document.createElement('div');
+  titleBar.className = 'win-title';
+  const titleText = document.createElement('span');
+  titleText.textContent = opts.title || 'Window';
+  titleBar.appendChild(titleText);
+
+  if (opts.closable !== false) {
+    const closeBtn = document.createElement('div');
+    closeBtn.className = 'win-btn';
+    closeBtn.textContent = 'X';
+    closeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (opts.onClose) opts.onClose();
+      else removeWin(opts.id);
+    });
+    titleBar.appendChild(closeBtn);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'win-body';
+
+  el.appendChild(titleBar);
+  el.appendChild(body);
+  document.getElementById('desktop').appendChild(el);
+
+  // dragging
+  let dragging = false, dx = 0, dy = 0;
+  titleBar.addEventListener('pointerdown', e => {
+    dragging = true;
+    dx = e.clientX - el.offsetLeft;
+    dy = e.clientY - el.offsetTop;
+    focusWin(opts.id);
+    e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    el.style.left = (e.clientX - dx) + 'px';
+    el.style.top = (e.clientY - dy) + 'px';
+  });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  el.addEventListener('pointerdown', () => focusWin(opts.id));
+
+  const w = {
+    id: opts.id, el, body, titleText, type: opts.type || 'generic',
+    name: opts.title, taskLabel: opts.taskLabel || opts.title,
+    ...opts.data
+  };
+  wins.set(opts.id, w);
+  focusWin(opts.id);
+  updateTaskbar();
+  return w;
+}
+
+function focusWin(id) {
+  wins.forEach(w => w.el.classList.remove('focused'));
+  wins.forEach(w => w.el.classList.add('unfocused'));
+  const w = wins.get(id);
+  if (w) {
+    w.el.classList.add('focused');
+    w.el.classList.remove('unfocused');
+    w.el.style.zIndex = ++winZ;
+    focusedWin = id;
+  }
+  updateTaskbar();
+}
+
+function removeWin(id) {
+  const w = wins.get(id);
+  if (!w) return;
+  if (w._audio) { w._audio.pause(); w._audio.src = ''; }
+  if (w._stream) { w._stream.getTracks().forEach(t => t.stop()); }
+  w.el.remove();
+  wins.delete(id);
+  updateTaskbar();
+}
+
+function updateWinTitle(w) {
+  if (!w) return;
+  let t = w.name || 'untitled';
+  if (w.live) t += ' [LIVE]';
+  else if (w.type === 'broadcast') t += ' [BROADCAST]';
+  else if (w.type === 'recording') t += ' [PLAYING]';
+  w.titleText.textContent = t;
+  w.taskLabel = t;
+  updateTaskbar();
+}
+
+// ---- TASKBAR ----------------------------------------------------------------
+function updateTaskbar() {
+  const container = document.getElementById('taskItems');
+  container.innerHTML = '';
+  wins.forEach(w => {
+    const btn = document.createElement('div');
+    btn.className = 'task-item' + (focusedWin === w.id ? ' active' : '');
+    const icons = { note: '&#128221;', player: '&#127925;', recorder: '&#9210;', live: '&#127908;', zine: '&#128214;', about: '&#8505;' };
+    btn.innerHTML = '<span>' + (icons[w.type] || '') + '</span> ' + esc(w.taskLabel || w.name || w.id);
+    btn.addEventListener('click', () => {
+      if (focusedWin === w.id) {
+        w.el.style.display = w.el.style.display === 'none' ? 'flex' : 'none';
+      } else {
+        w.el.style.display = 'flex';
+        focusWin(w.id);
+      }
+    });
+    container.appendChild(btn);
+  });
+}
+
+// clock
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}, 5000);
+
+// ---- START MENU -------------------------------------------------------------
+function toggleStart() {
+  startOpen = !startOpen;
+  document.getElementById('startMenu').classList.toggle('open', startOpen);
+  document.getElementById('startBtn').classList.toggle('pressed', startOpen);
+}
+document.addEventListener('click', e => {
+  if (startOpen && !e.target.closest('.start-menu') && !e.target.closest('.start-btn')) {
+    startOpen = false;
+    document.getElementById('startMenu').classList.remove('open');
+    document.getElementById('startBtn').classList.remove('pressed');
+  }
+  if (!e.target.closest('.ctx-menu')) {
+    document.getElementById('ctxMenu').classList.remove('open');
+  }
+});
+
+// ---- ACTIONS ----------------------------------------------------------------
+function doAction(action) {
+  startOpen = false;
+  document.getElementById('startMenu').classList.remove('open');
+  document.getElementById('startBtn').classList.remove('pressed');
+
+  if (state.role === 'listener' && action !== 'about') return;
+
+  switch (action) {
+    case 'note': openNoteComposer(); break;
+    case 'record': openRecorder(); break;
+    case 'upload': document.getElementById('audioFileInput').click(); break;
+    case 'live': goLive(); break;
+    case 'zine': document.getElementById('zineFileInput').click(); break;
+    case 'about': openAbout(); break;
+  }
+}
+
+// ---- NOTE -------------------------------------------------------------------
+function openNoteComposer() {
+  const id = '_compose_note_' + Date.now();
+  const w = createWin({
+    id, title: 'New Note', type: 'note', x: 150 + Math.random()*200, y: 80 + Math.random()*150,
+    width: 250, onClose: () => removeWin(id)
+  });
+  w.body.innerHTML = `
+    <textarea style="width:100%;height:80px;resize:vertical;border:2px inset var(--win-border-dark);
+      font-family:var(--sys);font-size:12px;padding:4px" maxlength="280" placeholder="Write something..."></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">
+      <button class="win-btn" style="width:auto;padding:2px 12px;font-size:10px" onclick="submitNote('${id}')">Post</button>
+    </div>`;
+}
+
+function submitNote(composerId) {
+  const w = wins.get(composerId);
+  if (!w) return;
+  const text = w.body.querySelector('textarea').value.trim();
+  if (!text) return;
+  const x = parseInt(w.el.style.left) || 200;
+  const y = parseInt(w.el.style.top) || 200;
+  socket.emit('place-note', { text, x, y });
+  removeWin(composerId);
+}
+
+function createNoteFromServer(n) {
+  const w = createWin({
+    id: n.id, title: 'Note — ' + (n.author || '?'), type: 'note',
+    x: n.x || 100, y: n.y || 100, width: 220,
+    onClose: () => {
+      if (n.owner === state.userId) { socket.emit('remove-note', n.id); }
+      removeWin(n.id);
+    }
+  });
+  w.body.innerHTML = `<div class="note-body">${esc(n.text)}</div>
+    <div class="note-meta">${esc(n.author || '?')} · ${n.time || ''}</div>`;
+}
+
+// ---- PLAYER (MP3) -----------------------------------------------------------
+function createPlayerFromServer(st) {
+  const w = createWin({
+    id: st.id, title: st.name || 'untitled', type: 'player',
+    extraClass: 'player', x: st.x || 100, y: st.y || 100,
+    onClose: () => {
+      if (st.owner === state.userId) { socket.emit('remove-station', st.id); }
+      removeWin(st.id);
+    },
+    data: { audioFileId: st.audioFileId, live: st.live, stationType: st.type, owner: st.owner, name: st.name }
+  });
+
+  w.body.innerHTML = `
+    <div class="player-display">
+      <div class="player-title-scroll">${esc(st.name || 'untitled')}</div>
+      <div class="player-time">0:00</div>
+    </div>
+    <div class="player-controls">
+      <button onclick="playerCmd('${st.id}','prev')" title="Previous">|&lt;</button>
+      <button onclick="playerCmd('${st.id}','play')" title="Play">&#9654;</button>
+      <button onclick="playerCmd('${st.id}','pause')" title="Pause">||</button>
+      <button onclick="playerCmd('${st.id}','stop')" title="Stop">&#9632;</button>
+      <button onclick="playerCmd('${st.id}','next')" title="Next">&gt;|</button>
+    </div>
+    <div class="player-progress" onclick="playerSeek(event,'${st.id}')">
+      <div class="player-progress-fill" style="width:0%"></div>
+    </div>
+    <div class="player-vol">
+      vol <input type="range" min="0" max="100" value="80" oninput="playerVol('${st.id}',this.value)">
+    </div>`;
+
+  if (st.audioFileId) {
+    w.audioFileId = st.audioFileId;
+    loadAudioForWin(w);
+  }
+  if (st.live) {
+    w.live = true; w.type = 'live';
+  }
+  updateWinTitle(w);
+}
+
+function loadAudioForWin(w) {
+  if (!w.audioFileId) return;
+  if (w._audio) { w._audio.pause(); w._audio.src = ''; }
+  const audio = new Audio('/api/audio/' + w.audioFileId);
+  audio.loop = true;
+  audio.volume = 0.8;
+  w._audio = audio;
+  w.type = 'player';
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration * 100).toFixed(1);
+    const fill = w.body.querySelector('.player-progress-fill');
+    if (fill) fill.style.width = pct + '%';
+    const m = Math.floor(audio.currentTime / 60), s = Math.floor(audio.currentTime % 60);
+    const timeEl = w.body.querySelector('.player-time');
+    if (timeEl) timeEl.textContent = m + ':' + s.toString().padStart(2, '0');
+  });
+
+  audio.play().catch(() => {});
+  updateWinTitle(w);
+}
+
+function playerCmd(id, cmd) {
   ensureAudio();
-  document.getElementById("gate").style.display = "none";
-  radioEl.classList.add("open");
-  connectToServer();
-  requestAnimationFrame(tick);
+  const w = wins.get(id);
+  if (!w || !w._audio) return;
+  switch (cmd) {
+    case 'play': w._audio.play().catch(() => {}); break;
+    case 'pause': w._audio.pause(); break;
+    case 'stop': w._audio.pause(); w._audio.currentTime = 0; break;
+    case 'prev': w._audio.currentTime = Math.max(0, w._audio.currentTime - 10); break;
+    case 'next': w._audio.currentTime = Math.min(w._audio.duration || 0, w._audio.currentTime + 10); break;
+  }
+}
+
+function playerSeek(e, id) {
+  const w = wins.get(id);
+  if (!w || !w._audio || !w._audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  w._audio.currentTime = pct * w._audio.duration;
+}
+
+function playerVol(id, val) {
+  const w = wins.get(id);
+  if (w && w._audio) w._audio.volume = val / 100;
+}
+
+// ---- UPLOAD MP3 -------------------------------------------------------------
+document.getElementById('audioFileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  const x = 100 + Math.random() * 400;
+  const y = 80 + Math.random() * 300;
+
+  socket.emit('place-station', { name: file.name.replace(/\.[^.]+$/, ''), x, y, reach: 460 });
+
+  // wait for station-placed event
+  const handler = async (st) => {
+    if (st.owner !== state.userId) return;
+    socket.off('station-placed', handler);
+
+    const fd = new FormData();
+    fd.append('audio', file);
+    const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.fileId) {
+      socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
+    }
+  };
+  socket.on('station-placed', handler);
 });
 
-document.getElementById("nameInput").addEventListener("keydown", e => {
-  if(e.key === "Enter") document.getElementById("enterBtn").click();
+// ---- RECORDER ---------------------------------------------------------------
+function openRecorder() {
+  const id = '_rec_' + Date.now();
+  const w = createWin({
+    id, title: 'Recorder', type: 'recorder', extraClass: 'recorder',
+    x: 200 + Math.random() * 200, y: 100 + Math.random() * 150, width: 240,
+    onClose: () => {
+      if (w._stream) w._stream.getTracks().forEach(t => t.stop());
+      if (w._recorder && w._recorder.state === 'recording') w._recorder.stop();
+      removeWin(id);
+    }
+  });
+  w.body.innerHTML = `
+    <div class="rec-timer">0:00</div>
+    <button class="rec-btn" onclick="toggleRecording('${id}')">REC</button>
+    <div class="rec-status">click to start recording</div>`;
+  w._recording = false;
+  w._startTime = 0;
+}
+
+async function toggleRecording(id) {
+  ensureAudio();
+  const w = wins.get(id);
+  if (!w) return;
+
+  if (!w._recording) {
+    // start
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      w._stream = stream;
+      const recorder = new MediaRecorder(stream);
+      w._recorder = recorder;
+      const chunks = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = async () => {
+        w._stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType });
+        clearInterval(w._timerInt);
+
+        w.body.querySelector('.rec-status').textContent = 'uploading...';
+        w.body.querySelector('.rec-btn').className = 'rec-btn stopped';
+        w.body.querySelector('.rec-btn').textContent = '...';
+
+        // place station and upload
+        const x = parseInt(w.el.style.left) || 200;
+        const y = parseInt(w.el.style.top) || 200;
+        socket.emit('place-station', { name: 'recording ' + new Date().toLocaleTimeString(), x, y, reach: 460 });
+
+        const handler = async (st) => {
+          if (st.owner !== state.userId) return;
+          socket.off('station-placed', handler);
+          const fd = new FormData();
+          fd.append('audio', blob, 'recording.webm');
+          const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (data.fileId) {
+            socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
+          }
+          removeWin(id);
+        };
+        socket.on('station-placed', handler);
+      };
+
+      recorder.start();
+      w._recording = true;
+      w._startTime = Date.now();
+      w.body.querySelector('.rec-btn').className = 'rec-btn recording';
+      w.body.querySelector('.rec-btn').textContent = 'STOP';
+      w.body.querySelector('.rec-status').textContent = 'recording...';
+      w._timerInt = setInterval(() => {
+        const sec = Math.floor((Date.now() - w._startTime) / 1000);
+        const m = Math.floor(sec / 60), s = sec % 60;
+        w.body.querySelector('.rec-timer').textContent = m + ':' + s.toString().padStart(2, '0');
+      }, 200);
+    } catch (err) {
+      w.body.querySelector('.rec-status').textContent = 'mic access denied';
+    }
+  } else {
+    // stop
+    w._recording = false;
+    if (w._recorder && w._recorder.state === 'recording') w._recorder.stop();
+  }
+}
+
+// ---- GO LIVE ----------------------------------------------------------------
+function goLive() {
+  const id = '_live_' + Date.now();
+  const w = createWin({
+    id, title: 'Go Live', type: 'live', extraClass: 'live-win',
+    x: 200 + Math.random() * 200, y: 100 + Math.random() * 150, width: 220,
+    onClose: () => {
+      if (w._stationId) socket.emit('stop-on-air', w._stationId);
+      if (w._stream) w._stream.getTracks().forEach(t => t.stop());
+      removeWin(id);
+    }
+  });
+
+  w.body.innerHTML = `
+    <div class="live-body">
+      <div style="margin-bottom:8px">Station name:</div>
+      <input type="text" style="width:100%;padding:3px;border:2px inset #888;font-size:11px;margin-bottom:8px"
+        id="liveName" placeholder="my live show" maxlength="40">
+      <button style="padding:4px 16px;font-size:11px;cursor:pointer" onclick="startLive('${id}')">GO LIVE</button>
+    </div>`;
+}
+
+async function startLive(id) {
+  ensureAudio();
+  const w = wins.get(id);
+  if (!w) return;
+
+  const name = w.body.querySelector('#liveName').value.trim() || 'live session';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    w._stream = stream;
+
+    const x = parseInt(w.el.style.left) || 200;
+    const y = parseInt(w.el.style.top) || 200;
+    socket.emit('place-station', { name, x, y, reach: 460 });
+
+    const handler = (st) => {
+      if (st.owner !== state.userId) return;
+      socket.off('station-placed', handler);
+      w._stationId = st.id;
+      socket.emit('go-on-air', st.id);
+
+      w.body.innerHTML = `
+        <div class="live-body">
+          <div class="live-indicator">&#9679; ON AIR</div>
+          <div class="live-bars" id="liveBars_${id}">
+            ${Array(16).fill(0).map(() => '<div class="live-bar" style="height:2px"></div>').join('')}
+          </div>
+          <div style="font-size:10px;color:#888">${esc(name)}</div>
+          <button style="margin-top:10px;padding:4px 16px;font-size:11px;cursor:pointer;background:#aa0000;color:#fff;border:1px solid #880000"
+            onclick="stopLiveWin('${id}')">STOP</button>
+        </div>`;
+
+      // send PCM chunks
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      const src = ctx.createMediaStreamSource(stream);
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+      src.connect(proc);
+      proc.connect(ctx.destination);
+      w._procNode = proc;
+      w._analyserNode = analyser;
+      w._audioCtx = ctx;
+
+      proc.onaudioprocess = e => {
+        const f32 = e.inputBuffer.getChannelData(0);
+        const i16 = new Int16Array(f32.length);
+        for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32768));
+        socket.volatile.emit('live-audio', { stationId: st.id, audio: i16.buffer });
+      };
+
+      // visualize
+      const bins = new Uint8Array(analyser.frequencyBinCount);
+      function drawLive() {
+        if (!wins.has(id)) return;
+        analyser.getByteFrequencyData(bins);
+        const bars = document.querySelectorAll(`#liveBars_${id} .live-bar`);
+        bars.forEach((bar, i) => {
+          bar.style.height = Math.max(2, bins[i % bins.length] / 255 * 30) + 'px';
+        });
+        requestAnimationFrame(drawLive);
+      }
+      drawLive();
+    };
+    socket.on('station-placed', handler);
+  } catch (err) {
+    w.body.innerHTML = '<div class="live-body" style="color:#ff4444">Mic access denied</div>';
+  }
+}
+
+function stopLiveWin(id) {
+  const w = wins.get(id);
+  if (!w) return;
+  if (w._stationId) socket.emit('stop-on-air', w._stationId);
+  if (w._stream) w._stream.getTracks().forEach(t => t.stop());
+  if (w._procNode) w._procNode.disconnect();
+  if (w._audioCtx) w._audioCtx.close();
+  removeWin(id);
+}
+
+// play incoming live PCM
+function playLivePCM(w, buffer) {
+  ensureAudio();
+  if (!audioCtx) return;
+  const i16 = new Int16Array(buffer);
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+  const ab = audioCtx.createBuffer(1, f32.length, 16000);
+  ab.getChannelData(0).set(f32);
+  const src = audioCtx.createBufferSource();
+  src.buffer = ab;
+  src.connect(audioCtx.destination);
+  src.start();
+}
+
+// ---- ZINE UPLOAD ------------------------------------------------------------
+document.getElementById('zineFileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+
+  const fd = new FormData();
+  fd.append('pdf', file);
+  const res = await fetch('/api/zine/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.fileId) {
+    const x = 150 + Math.random() * 300;
+    const y = 80 + Math.random() * 200;
+    socket.emit('place-zine', {
+      title: file.name.replace(/\.pdf$/i, ''),
+      x, y, fileId: data.fileId, originalName: file.name, size: file.size
+    });
+  }
 });
+
+function createZineFromServer(z) {
+  const w = createWin({
+    id: z.id, title: z.title || 'Zine', type: 'zine', extraClass: 'zine-win',
+    x: z.x || 100, y: z.y || 100,
+    onClose: () => {
+      if (z.owner === state.userId) socket.emit('remove-zine', z.id);
+      removeWin(z.id);
+    }
+  });
+  w.body.innerHTML = `<iframe src="/api/zine/${z.id}/pdf"></iframe>`;
+}
+
+// ---- ABOUT ------------------------------------------------------------------
+function openAbout() {
+  if (wins.has('_about')) { focusWin('_about'); return; }
+  const w = createWin({
+    id: '_about', title: 'About Little Field', type: 'about',
+    x: 200, y: 120, width: 320, onClose: () => removeWin('_about')
+  });
+  w.body.style.padding = '12px';
+  w.body.innerHTML = `
+    <div style="text-align:center;margin-bottom:10px">
+      <span style="font-size:28px">&#127793;</span>
+      <div style="font-weight:700;font-size:14px;margin-top:4px">Little Field</div>
+      <div style="font-size:10px;color:#888">shared acoustic desktop</div>
+    </div>
+    <div style="font-size:11px;line-height:1.6;color:#444">
+      A shared space where everyone is present at the same time.
+      Drop notes, recordings, MP3 clips, go live, or upload zines.
+      <br><br>
+      <b>Contributors</b> can add content.<br>
+      <b>Listeners</b> browse, read &amp; listen.
+      <br><br>
+      <span style="font-size:9px;color:#888">built with love &amp; socket.io</span>
+    </div>`;
+}
+
+// ---- HELPERS ----------------------------------------------------------------
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// right-click context menu on desktop
+document.getElementById('desktop').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (state.role === 'listener') return;
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="doAction('note')">&#128221; Drop a Note</div>
+    <div class="ctx-item" onclick="doAction('record')">&#9210; Record Audio</div>
+    <div class="ctx-item" onclick="doAction('upload')">&#127925; Upload MP3</div>
+    <div class="ctx-item" onclick="doAction('live')">&#127908; Go Live</div>
+    <div class="ctx-item" onclick="doAction('zine')">&#128214; Upload Zine</div>`;
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+  menu.classList.add('open');
+});
+
+// init clock
+document.getElementById('clock').textContent =
+  new Date().getHours().toString().padStart(2,'0') + ':' + new Date().getMinutes().toString().padStart(2,'0');
 </script>
 </body>
 </html>
