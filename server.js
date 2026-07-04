@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
+const archiver = require('archiver');
 
 const app = express();
 const server = http.createServer(app);
@@ -276,6 +277,18 @@ app.post('/api/admin/stop-live/:roomId/:stationId', checkAdmin, (req, res) => {
   st.live = false; st.hasAudio = false; st.type = 'empty';
   io.to(room.id).emit('station-off-air', st.id);
   res.json({ ok: true });
+});
+
+// download all uploads as zip
+app.get('/api/admin/download-all', checkAdmin, (req, res) => {
+  const files = fs.readdirSync(UPLOADS_DIR);
+  if (files.length === 0) return res.status(404).json({ error: 'no files' });
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', 'attachment; filename="little-field-uploads.zip"');
+  const archive = archiver('zip', { zlib: { level: 5 } });
+  archive.pipe(res);
+  files.forEach(f => archive.file(path.join(UPLOADS_DIR, f), { name: f }));
+  archive.finalize();
 });
 
 // catch-all for SPA

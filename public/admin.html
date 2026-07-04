@@ -318,7 +318,8 @@ function renderRooms() {
 
 function renderFiles() {
   const files = cachedData.uploadFiles;
-  let html = `<div class="card"><div class="card-header"><span class="card-title">uploaded files</span><span class="card-count">${files.length} files · ${cachedData.diskUsageMB} MB</span></div>`;
+  let html = `<div style="margin-bottom:12px"><a class="btn btn-action" href="/api/admin/download-all?key=${key}" style="text-decoration:none;padding:8px 14px;font-size:10px">download all as zip</a></div>`;
+  html += `<div class="card"><div class="card-header"><span class="card-title">uploaded files</span><span class="card-count">${files.length} files · ${cachedData.diskUsageMB} MB</span></div>`;
   if (files.length === 0) { html += '<div class="empty-msg">no files uploaded</div>'; }
   files.sort((a,b) => new Date(b.created) - new Date(a.created));
   files.forEach(f => {
