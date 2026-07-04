@@ -444,6 +444,14 @@ function focusWin(id) {
   updateTaskbar();
 }
 
+function hideWin(id) {
+  const w = wins.get(id);
+  if (!w) return;
+  w.el.style.display = 'none';
+  w._hidden = true;
+  updateTaskbar();
+}
+
 function removeWin(id) {
   const w = wins.get(id);
   if (!w) return;
@@ -559,8 +567,14 @@ function createNoteFromServer(n) {
     id: n.id, title: 'Note — ' + (n.author || '?'), type: 'note',
     x: n.x || 100, y: n.y || 100, width: 220,
     onClose: () => {
-      if (n.owner === state.userId) { socket.emit('remove-note', n.id); }
-      removeWin(n.id);
+      if (n.owner === state.userId) {
+        if (confirm('Delete this note for everyone?')) {
+          socket.emit('remove-note', n.id);
+          removeWin(n.id);
+        }
+      } else {
+        hideWin(n.id);
+      }
     }
   });
   w.body.innerHTML = `<div class="note-body">${esc(n.text)}</div>
@@ -573,8 +587,14 @@ function createPlayerFromServer(st) {
     id: st.id, title: st.name || 'untitled', type: 'player',
     extraClass: 'player', x: st.x || 100, y: st.y || 100,
     onClose: () => {
-      if (st.owner === state.userId) { socket.emit('remove-station', st.id); }
-      removeWin(st.id);
+      if (st.owner === state.userId) {
+        if (confirm('Delete this station for everyone?')) {
+          socket.emit('remove-station', st.id);
+          removeWin(st.id);
+        }
+      } else {
+        hideWin(st.id);
+      }
     },
     data: { audioFileId: st.audioFileId, live: st.live, stationType: st.type, owner: st.owner, name: st.name }
   });
@@ -910,8 +930,14 @@ function createZineFromServer(z) {
     id: z.id, title: z.title || 'Zine', type: 'zine', extraClass: 'zine-win',
     x: z.x || 100, y: z.y || 100,
     onClose: () => {
-      if (z.owner === state.userId) socket.emit('remove-zine', z.id);
-      removeWin(z.id);
+      if (z.owner === state.userId) {
+        if (confirm('Delete this zine for everyone?')) {
+          socket.emit('remove-zine', z.id);
+          removeWin(z.id);
+        }
+      } else {
+        hideWin(z.id);
+      }
     }
   });
   w.body.innerHTML = `<iframe src="/api/zine/${z.id}/pdf"></iframe>`;
