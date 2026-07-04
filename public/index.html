@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#c0c0c0">
+<meta name="theme-color" content="#ffffff">
 <title>Little Field</title>
 <style>
 :root{
@@ -14,7 +14,7 @@
   --win-border-dark:#808080;
   --win-border-darker:#404040;
   --win-face:#c0c0c0;
-  --desktop:#008080;
+  --desktop:#ffffff;
   --live:#cc0000;
   --rec:#cc4400;
   --note-bg:#ffffe1;
@@ -455,6 +455,18 @@ function createWin(opts) {
 
   el.addEventListener('pointerdown', () => focusWin(opts.id));
 
+  titleBar.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const w = wins.get(opts.id);
+    if (!w || !w.owner || w.owner !== state.userId || !w.deleteAction) return;
+    const menu = document.getElementById('ctxMenu');
+    menu.innerHTML = `<div class="ctx-item" style="color:#cc0000" onclick="winDelete('${opts.id}')">&#10060; Delete for everyone</div>`;
+    menu.style.left = e.clientX + 'px';
+    menu.style.top = e.clientY + 'px';
+    menu.classList.add('open');
+  });
+
   const w = {
     id: opts.id, el, body, titleText, type: opts.type || 'generic',
     name: opts.title, taskLabel: opts.taskLabel || opts.title,
@@ -602,16 +614,8 @@ function createNoteFromServer(n) {
   const w = createWin({
     id: n.id, title: 'Note — ' + (n.author || '?'), type: 'note',
     x: n.x || 100, y: n.y || 100, width: 220,
-    onClose: () => {
-      if (n.owner === state.userId) {
-        if (confirm('Delete this note for everyone?')) {
-          socket.emit('remove-note', n.id);
-          removeWin(n.id);
-        }
-      } else {
-        hideWin(n.id);
-      }
-    }
+    onClose: () => { hideWin(n.id); },
+    data: { owner: n.owner, deleteAction: () => { socket.emit('remove-note', n.id); removeWin(n.id); } }
   });
   w.body.innerHTML = `<div class="note-body">${esc(n.text)}</div>
     <div class="note-meta">${esc(n.author || '?')} · ${n.time || ''}</div>`;
@@ -622,17 +626,9 @@ function createPlayerFromServer(st) {
   const w = createWin({
     id: st.id, title: st.name || 'untitled', type: 'player',
     extraClass: 'player', x: st.x || 100, y: st.y || 100,
-    onClose: () => {
-      if (st.owner === state.userId) {
-        if (confirm('Delete this station for everyone?')) {
-          socket.emit('remove-station', st.id);
-          removeWin(st.id);
-        }
-      } else {
-        hideWin(st.id);
-      }
-    },
-    data: { audioFileId: st.audioFileId, live: st.live, stationType: st.type, owner: st.owner, name: st.name }
+    onClose: () => { hideWin(st.id); },
+    data: { audioFileId: st.audioFileId, live: st.live, stationType: st.type, owner: st.owner, name: st.name,
+      deleteAction: () => { socket.emit('remove-station', st.id); removeWin(st.id); } }
   });
 
   w.body.innerHTML = `
@@ -965,16 +961,8 @@ function createZineFromServer(z) {
   const w = createWin({
     id: z.id, title: z.title || 'Zine', type: 'zine', extraClass: 'zine-win',
     x: z.x || 100, y: z.y || 100,
-    onClose: () => {
-      if (z.owner === state.userId) {
-        if (confirm('Delete this zine for everyone?')) {
-          socket.emit('remove-zine', z.id);
-          removeWin(z.id);
-        }
-      } else {
-        hideWin(z.id);
-      }
-    }
+    onClose: () => { hideWin(z.id); },
+    data: { owner: z.owner, deleteAction: () => { socket.emit('remove-zine', z.id); removeWin(z.id); } }
   });
   w.body.innerHTML = `<iframe src="/api/zine/${z.id}/pdf"></iframe>`;
 }
@@ -1048,6 +1036,14 @@ function openAbout() {
       <br><br>
       <span style="font-size:9px;color:#888">built with love &amp; socket.io</span>
     </div>`;
+}
+
+// ---- WIN DELETE (owner only, via right-click) -------------------------------
+function winDelete(id) {
+  document.getElementById('ctxMenu').classList.remove('open');
+  const w = wins.get(id);
+  if (!w || !w.deleteAction) return;
+  if (confirm('Delete this for everyone?')) w.deleteAction();
 }
 
 // ---- LIVE NOTIFY ------------------------------------------------------------
