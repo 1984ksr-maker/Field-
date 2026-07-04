@@ -531,6 +531,6 @@ setInterval(() => {
 }, 300000);
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🌾 Little Field — spatial audio platform`);
+  console.log(`\n🌾 Community Field — spatial audio platform`);
   console.log(`   http://localhost:${PORT}\n`);
 });
