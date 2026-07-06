@@ -3,287 +3,291 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#fafafa">
 <title>Community Field</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
 :root{
-  --win-bg:#c0c0c0;
-  --win-title:#000080;
-  --win-title-text:#fff;
-  --win-border-light:#dfdfdf;
-  --win-border-dark:#808080;
-  --win-border-darker:#404040;
-  --win-face:#c0c0c0;
-  --desktop:#ffffff;
-  --live:#cc0000;
-  --rec:#cc4400;
-  --note-bg:#ffffe1;
-  --mono:'Courier New',Courier,monospace;
-  --sys:'Segoe UI','Tahoma','Geneva',sans-serif;
-  --taskbar-h:36px;
+  --bg:#fafafa;
+  --fg:#111;
+  --muted:#999;
+  --accent:#111;
+  --card-bg:#fff;
+  --card-border:#e0e0e0;
+  --radius:2px;
+  --font:'Space Grotesk',system-ui,sans-serif;
+  --mono:'Space Mono','Courier New',monospace;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.04);
+  --shadow-lg:0 4px 20px rgba(0,0,0,.1),0 8px 40px rgba(0,0,0,.06);
+  --toolbar-h:56px;
+  --live:#e00;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:var(--desktop);font-family:var(--sys);font-size:12px;
-  -webkit-user-select:none;user-select:none;cursor:default}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);font-size:13px;color:var(--fg)}
 
-/* DESKTOP CANVAS */
-#desktop{position:fixed;inset:0;bottom:var(--taskbar-h);overflow:hidden;
-  background-image:linear-gradient(rgba(0,0,0,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.04) 1px,transparent 1px);
-  background-size:40px 40px}
+/* MAP */
+#map{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1}
+.leaflet-control-attribution{font-family:var(--mono)!important;font-size:9px!important;opacity:.4}
+.leaflet-control-zoom a{font-family:var(--font)!important;border-radius:0!important;border:1px solid var(--card-border)!important;
+  background:var(--card-bg)!important;color:var(--fg)!important;width:28px!important;height:28px!important;line-height:26px!important}
 
-/* WINDOW */
-.win{position:absolute;background:var(--win-face);min-width:180px;
-  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
-  box-shadow:1px 1px 0 var(--win-border-darker);z-index:10;display:flex;flex-direction:column}
-.win.focused{z-index:100}
-.win-title{display:flex;align-items:center;gap:4px;padding:2px 3px;
-  background:linear-gradient(90deg,var(--win-title),#1084d0);color:var(--win-title-text);
-  font-size:11px;font-weight:700;cursor:move;white-space:nowrap;overflow:hidden}
-.win.unfocused .win-title{background:linear-gradient(90deg,#808080,#b0b0b0)}
-.win-title span{flex:1;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
-.win-btn{width:16px;height:14px;background:var(--win-face);border:1px solid;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-  font-size:9px;line-height:12px;text-align:center;cursor:pointer;color:#000;font-family:var(--mono);flex-shrink:0}
-.win-btn:active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
-.win-body{padding:6px;flex:1;overflow:auto;font-size:11px}
+/* GATE */
+.gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column}
+.gate-inner{max-width:400px;width:90%;text-align:center}
+.gate-title{font-size:32px;font-weight:300;letter-spacing:-.02em;margin-bottom:4px}
+.gate-sub{font-size:13px;color:var(--muted);margin-bottom:40px;font-weight:300}
+.gate-input{width:100%;padding:12px 0;border:none;border-bottom:1px solid var(--card-border);
+  font-family:var(--font);font-size:16px;background:transparent;outline:none;text-align:center;color:var(--fg)}
+.gate-input::placeholder{color:#ccc}
+.gate-input:focus{border-color:var(--fg)}
+.gate-btn{margin-top:32px;padding:12px 48px;border:1px solid var(--fg);background:var(--fg);color:var(--bg);
+  font-family:var(--font);font-size:13px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;
+  transition:all .2s}
+.gate-btn:hover{background:transparent;color:var(--fg)}
 
-/* NOTE WINDOW */
-.note-body{background:var(--note-bg);padding:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;
-  min-height:40px;border:1px inset var(--win-border-dark)}
-.note-meta{font-size:9px;color:#888;padding:3px 0 0;font-family:var(--mono)}
+/* TOOLBAR */
+.toolbar{position:fixed;bottom:0;left:0;right:0;height:var(--toolbar-h);z-index:1000;
+  background:var(--card-bg);border-top:1px solid var(--card-border);
+  display:none;align-items:center;justify-content:center;gap:1px;padding:0 16px}
+.toolbar.visible{display:flex}
+.tb-btn{height:40px;padding:0 16px;border:none;background:transparent;font-family:var(--font);font-size:11px;
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.04em;
+  text-transform:uppercase;transition:color .15s;position:relative;white-space:nowrap}
+.tb-btn:hover{color:var(--fg)}
+.tb-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tb-sep{width:1px;height:20px;background:var(--card-border);margin:0 8px}
+.tb-info{position:absolute;right:16px;font-size:10px;color:var(--muted);font-family:var(--mono);
+  display:flex;align-items:center;gap:12px;letter-spacing:.02em}
+.tb-brand{position:absolute;left:16px;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--fg)}
 
-/* PLAYER WINDOW (Winamp-style) */
-.player{width:260px}
-.player .win-body{padding:0;background:#232323;color:#00ff00;font-family:var(--mono)}
-.player-display{padding:6px 8px;background:#0a0a14;margin:4px;border:1px inset #444;min-height:30px}
-.player-title-scroll{font-size:10px;color:#00cc00;white-space:nowrap;overflow:hidden}
-.player-time{font-size:18px;color:#00ff00;font-family:var(--mono);margin-top:2px}
-.player-controls{display:flex;align-items:center;justify-content:center;gap:2px;padding:4px 6px}
-.player-controls button{width:28px;height:18px;font-size:9px;background:#3a3a3a;color:#ccc;border:1px solid;
-  border-color:#555 #222 #222 #555;cursor:pointer;font-family:var(--mono)}
-.player-controls button:hover{background:#555}
-.player-controls button.active{background:#00aa00;color:#000}
-.player-progress{margin:0 6px 4px;height:8px;background:#0a0a14;border:1px inset #444;cursor:pointer;position:relative}
-.player-progress-fill{height:100%;background:#00aa00;pointer-events:none}
-.player-vol{display:flex;align-items:center;gap:4px;padding:0 6px 4px;font-size:9px;color:#888}
-.player-vol input{width:60px;height:6px;-webkit-appearance:none;appearance:none;background:#0a0a14;outline:none;cursor:pointer}
-.player-vol input::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;background:#aaa;border:1px solid #666}
+/* LIVE PILL */
+.live-pill{display:none;align-items:center;gap:5px;padding:4px 10px;background:#1a1a1a;color:#fff;
+  font-size:10px;font-family:var(--mono);letter-spacing:.04em;cursor:pointer;margin-left:8px}
+.live-pill.visible{display:flex}
+.live-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--live);animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* RECORDER WINDOW */
-.recorder{width:240px}
-.recorder .win-body{padding:8px;background:#1a1a1a;color:#ddd;font-family:var(--mono);text-align:center}
-.rec-timer{font-size:22px;color:#ff4444;font-family:var(--mono);margin:8px 0}
-.rec-btn{width:48px;height:48px;border-radius:50%;border:3px solid #666;background:#aa0000;color:#fff;
-  font-size:10px;cursor:pointer;font-family:var(--mono);margin:8px auto;display:block}
-.rec-btn:hover{background:#cc0000}
-.rec-btn.recording{background:#ff0000;animation:pulse-rec 1s infinite}
-.rec-btn.stopped{background:#444;border-color:#555}
-@keyframes pulse-rec{0%,100%{box-shadow:0 0 0 0 #ff000060}50%{box-shadow:0 0 0 8px #ff000000}}
-.rec-status{font-size:10px;color:#888;margin-top:4px}
+/* PIN MARKERS */
+.pin-marker{cursor:pointer;transition:transform .15s}
+.pin-marker:hover{transform:scale(1.1)}
+.pin-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  background:var(--card-bg);border:1.5px solid var(--fg);border-radius:50%;
+  font-size:14px;box-shadow:var(--shadow);transition:all .15s}
+.pin-icon.audio{border-color:#2a6;background:#f0faf4}
+.pin-icon.photo{border-color:#48c;background:#f0f5fc}
+.pin-icon.note{border-color:#c84;background:#fdf8f0}
+.pin-icon.drawing{border-color:#84c;background:#f6f0fd}
+.pin-icon.live{border-color:var(--live);background:#fff0f0;animation:live-ring 1.5s infinite}
+@keyframes live-ring{0%,100%{box-shadow:0 0 0 0 rgba(224,0,0,.2)}50%{box-shadow:0 0 0 8px rgba(224,0,0,0)}}
 
-/* LIVE WINDOW */
-.live-win{width:220px}
-.live-win .win-title{background:linear-gradient(90deg,#aa0000,#cc4400) !important}
-.live-body{padding:8px;background:#1a1a1a;color:#ddd;font-family:var(--mono);text-align:center}
-.live-indicator{font-size:14px;color:#ff0000;font-weight:700;animation:pulse-rec 1.2s infinite}
-.live-bars{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:30px;margin:8px 0}
-.live-bar{width:4px;background:#00cc00;border-radius:1px;transition:height .1s}
+/* POPUP CARDS */
+.leaflet-popup-content-wrapper{border-radius:var(--radius)!important;box-shadow:var(--shadow-lg)!important;
+  padding:0!important;border:1px solid var(--card-border)}
+.leaflet-popup-content{margin:0!important;min-width:220px;max-width:320px;font-family:var(--font)}
+.leaflet-popup-tip{border-top-color:var(--card-bg)!important}
+.leaflet-popup-close-button{display:none!important}
 
-/* ZINE WINDOW */
-.zine-win{width:300px;height:400px}
-.zine-win .win-body{padding:0;display:flex;flex-direction:column}
-.zine-win iframe{flex:1;border:none;background:#fff}
-.zine-nav{display:flex;gap:4px;padding:4px;background:var(--win-face);border-top:1px solid var(--win-border-dark)}
-.zine-nav button{font-size:10px;padding:2px 8px;background:var(--win-face);border:1px solid;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);cursor:pointer}
+.card{overflow:hidden}
+.card-img{width:100%;max-height:240px;object-fit:cover;display:block;background:#f0f0f0}
+.card-body{padding:14px 16px}
+.card-text{font-size:13px;line-height:1.6;color:var(--fg);white-space:pre-wrap;word-break:break-word}
+.card-meta{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px;
+  display:flex;justify-content:space-between;align-items:center}
+.card-author{font-weight:500}
 
-/* GATE / LOGIN */
-.gate{position:fixed;inset:0;z-index:9999;background:var(--desktop);display:flex;align-items:center;justify-content:center}
-.gate-box{background:var(--win-face);border:2px solid;
-  border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
-  width:360px;max-width:90vw}
-.gate-title{padding:3px 5px;background:linear-gradient(90deg,var(--win-title),#1084d0);
-  color:#fff;font-size:11px;font-weight:700}
-.gate-body{padding:20px}
-.gate-body label{font-size:11px;display:block;margin-bottom:4px}
-.gate-body input[type=text]{width:100%;padding:3px 4px;border:2px solid;
-  border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
-  font-size:12px;font-family:var(--sys);margin-bottom:12px;background:#fff}
-.gate-body input[type=text]:focus{outline:none}
-.gate-roles{display:flex;gap:8px;margin-bottom:16px}
-.gate-role{flex:1;padding:10px;border:2px solid;cursor:pointer;text-align:center;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-  background:var(--win-face);font-size:11px}
-.gate-role:hover{background:#d4d4d4}
-.gate-role.selected{background:var(--win-title);color:#fff;border-color:var(--win-title)}
-.gate-role .role-icon{font-size:20px;margin-bottom:4px}
-.gate-role .role-name{font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
-.gate-role .role-desc{font-size:9px;margin-top:3px;opacity:.8}
-.gate-enter{width:100%;padding:6px;background:var(--win-face);border:2px solid;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-  font-size:12px;font-family:var(--sys);cursor:pointer;font-weight:700}
-.gate-enter:hover{background:#d4d4d4}
-.gate-enter:active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
+/* AUDIO CARD */
+.audio-card{padding:16px}
+.audio-title{font-size:12px;font-weight:500;margin-bottom:10px;letter-spacing:.02em}
+.audio-wave{height:40px;display:flex;align-items:flex-end;gap:2px;margin-bottom:10px}
+.audio-bar{width:3px;background:var(--fg);border-radius:1px;transition:height .1s;opacity:.3}
+.audio-bar.active{opacity:1}
+.audio-controls{display:flex;align-items:center;gap:10px}
+.audio-play{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--fg);background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.audio-play:hover{background:var(--fg);color:var(--bg)}
+.audio-play svg{width:14px;height:14px;fill:currentColor;stroke:none;margin-left:2px}
+.audio-time{font-size:11px;font-family:var(--mono);color:var(--muted)}
+.audio-vol{width:60px;height:3px;-webkit-appearance:none;appearance:none;background:#e0e0e0;outline:none;cursor:pointer}
+.audio-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--fg);border-radius:50%}
 
-/* TASKBAR */
-.taskbar{position:fixed;bottom:0;left:0;right:0;height:var(--taskbar-h);z-index:200;
-  background:var(--win-face);border-top:2px solid var(--win-border-light);
-  display:flex;align-items:center;padding:2px 4px;gap:2px}
-.start-btn{display:flex;align-items:center;gap:3px;padding:2px 6px;height:28px;
-  background:var(--win-face);border:2px solid;font-weight:700;font-size:11px;cursor:pointer;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light)}
-.start-btn:active,.start-btn.pressed{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark)}
-.start-btn .start-icon{font-size:14px}
-.task-sep{width:2px;height:24px;border-left:1px solid var(--win-border-dark);border-right:1px solid var(--win-border-light);margin:0 2px}
-.task-items{flex:1;display:flex;gap:2px;overflow-x:auto;min-width:0}
-.task-item{height:24px;padding:0 8px;font-size:10px;background:var(--win-face);border:2px solid;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light);
-  cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;
-  display:flex;align-items:center;gap:3px}
-.task-item.active{border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);background:#b0b0b0}
-.task-clock{font-family:var(--mono);font-size:11px;padding:0 8px;height:24px;display:flex;align-items:center;
-  border:2px solid;border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
-  min-width:70px;justify-content:center;gap:8px}
-.task-users{font-size:9px;color:#555}
+/* DRAWING CARD */
+.drawing-card{padding:0}
+.drawing-card svg{display:block;background:#fff}
 
-/* START MENU */
-.start-menu{position:fixed;bottom:var(--taskbar-h);left:0;z-index:300;background:var(--win-face);
-  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
-  width:200px;display:none;box-shadow:2px 2px 0 #00000040}
-.start-menu.open{display:block}
-.start-menu-header{background:linear-gradient(180deg,var(--win-title),#1084d0);color:#fff;
-  padding:8px;font-size:11px;font-weight:700;writing-mode:vertical-lr;transform:rotate(180deg);
-  position:absolute;left:0;top:0;bottom:0;width:24px;display:flex;align-items:center;justify-content:flex-end;letter-spacing:.1em}
-.start-menu-items{margin-left:24px;padding:4px 0}
-.start-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:11px;cursor:pointer}
-.start-item:hover{background:var(--win-title);color:#fff}
-.start-item .si-icon{font-size:16px;width:20px;text-align:center}
-.start-sep{height:1px;background:var(--win-border-dark);margin:4px 12px 4px 36px}
-.start-item.disabled{color:#888;cursor:default}
-.start-item.disabled:hover{background:transparent;color:#888}
+/* MODAL OVERLAY */
+.modal{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(2px)}
+.modal.open{display:flex}
+.modal-box{background:var(--card-bg);border:1px solid var(--card-border);width:90%;max-width:400px;max-height:90vh;overflow-y:auto}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--card-border);font-size:14px;font-weight:500;
+  display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:0 4px}
+.modal-close:hover{color:var(--fg)}
+.modal-body{padding:20px}
+.modal-body label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.modal-body textarea,.modal-body input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--card-border);
+  font-family:var(--font);font-size:13px;background:var(--bg);outline:none;resize:vertical;color:var(--fg)}
+.modal-body textarea:focus,.modal-body input[type=text]:focus{border-color:var(--fg)}
+.modal-body .field-group{margin-bottom:16px}
+.modal-submit{width:100%;padding:12px;border:1px solid var(--fg);background:var(--fg);color:var(--bg);
+  font-family:var(--font);font-size:12px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;
+  margin-top:8px;transition:all .2s}
+.modal-submit:hover{background:transparent;color:var(--fg)}
 
-/* CONTEXT MENU */
-.ctx-menu{position:fixed;z-index:400;background:var(--win-face);border:2px solid;
-  border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
-  box-shadow:2px 2px 0 #00000040;display:none;min-width:140px}
-.ctx-menu.open{display:block}
-.ctx-item{padding:4px 20px;font-size:11px;cursor:pointer}
-.ctx-item:hover{background:var(--win-title);color:#fff}
+/* DRAW CANVAS OVERLAY */
+.draw-overlay{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1500;display:none;background:rgba(255,255,255,.85)}
+.draw-overlay.open{display:block}
+.draw-toolbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:1px;
+  background:var(--card-bg);border:1px solid var(--card-border);box-shadow:var(--shadow)}
+.draw-toolbar button{height:36px;padding:0 14px;border:none;background:transparent;font-family:var(--font);
+  font-size:11px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.draw-toolbar button:hover{color:var(--fg)}
+.draw-toolbar button.active{color:var(--fg);background:var(--bg)}
+.draw-canvas{position:absolute;inset:0;cursor:crosshair}
 
-/* LIVE INDICATOR (taskbar) */
-.live-notify{display:none;align-items:center;gap:4px;padding:0 8px;height:24px;cursor:pointer;
-  border:2px solid;border-color:var(--win-border-dark) var(--win-border-light) var(--win-border-light) var(--win-border-dark);
-  background:#1a1a1a;color:#ff3333;font-family:var(--mono);font-size:10px;font-weight:700;
-  animation:live-pulse 1.5s infinite;white-space:nowrap;position:relative}
-.live-notify.visible{display:flex}
-.live-dot{width:8px;height:8px;border-radius:50%;background:#ff0000;animation:dot-blink .8s infinite}
-@keyframes live-pulse{0%,100%{box-shadow:0 0 0 0 #ff000040}50%{box-shadow:0 0 6px 2px #ff000060}}
-@keyframes dot-blink{0%,100%{opacity:1}50%{opacity:.3}}
-.live-count{background:#ff0000;color:#fff;border-radius:8px;padding:0 4px;font-size:8px;margin-left:2px;min-width:12px;text-align:center}
-.live-dropdown{position:absolute;bottom:28px;right:0;min-width:200px;background:var(--win-face);
-  border:2px solid;border-color:var(--win-border-light) var(--win-border-darker) var(--win-border-darker) var(--win-border-light);
-  box-shadow:2px 2px 0 #00000040;display:none;z-index:500}
-.live-dropdown.open{display:block}
-.live-dropdown-title{padding:4px 8px;background:linear-gradient(90deg,#aa0000,#cc4400);color:#fff;font-size:10px;font-weight:700}
-.live-dropdown-item{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid #ddd}
-.live-dropdown-item:last-child{border-bottom:none}
-.live-dropdown-item:hover{background:#d4d4d4}
-.live-dropdown-item .ld-dot{width:6px;height:6px;border-radius:50%;background:#ff0000;animation:dot-blink .8s infinite;flex-shrink:0}
-.live-dropdown-item .ld-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.live-dropdown-item .ld-listen{font-size:9px;color:#fff;background:#aa0000;padding:2px 6px;border-radius:2px;flex-shrink:0}
+/* RECORDER */
+.rec-circle{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;position:relative}
+.rec-circle::after{content:'';position:absolute;inset:3px;border-radius:50%;background:currentColor}
 
-/* SCROLL */
-::-webkit-scrollbar{width:14px}
-::-webkit-scrollbar-track{background:var(--win-face);border:1px solid var(--win-border-dark)}
-::-webkit-scrollbar-thumb{background:var(--win-face);border:2px solid;
-  border-color:var(--win-border-light) var(--win-border-dark) var(--win-border-dark) var(--win-border-light)}
+/* UPLOAD PROGRESS */
+.upload-toast{position:fixed;bottom:calc(var(--toolbar-h) + 12px);left:50%;transform:translateX(-50%);
+  padding:8px 20px;background:var(--fg);color:var(--bg);font-size:11px;font-family:var(--mono);
+  z-index:3000;display:none;letter-spacing:.02em}
+.upload-toast.visible{display:block}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .tb-btn span{display:none}
+  .tb-btn{padding:0 10px}
+  .tb-brand{display:none}
+  .tb-info{font-size:9px;gap:8px}
+}
 </style>
 </head>
 <body>
 
 <!-- GATE -->
 <div class="gate" id="gate">
-  <div class="gate-box">
-    <div class="gate-title">Welcome to Community Field</div>
-    <div class="gate-body">
-      <label for="nameInput">Your name:</label>
-      <input type="text" id="nameInput" placeholder="anonymous" maxlength="24">
-      <label>Join as:</label>
-      <div class="gate-roles">
-        <div class="gate-role selected" data-role="contributor" onclick="selectRole(this)">
-          <div class="role-icon">&#9998;</div>
-          <div class="role-name">Contributor</div>
-          <div class="role-desc">Drop notes, record, upload, go live</div>
-        </div>
-        <div class="gate-role" data-role="listener" onclick="selectRole(this)">
-          <div class="role-icon">&#9835;</div>
-          <div class="role-name">Listener</div>
-          <div class="role-desc">Browse, read &amp; listen only</div>
-        </div>
+  <div class="gate-inner">
+    <div class="gate-title">Community Field</div>
+    <div class="gate-sub">a shared tracing space</div>
+    <input class="gate-input" id="nameInput" type="text" placeholder="your name" maxlength="24" autofocus>
+    <br>
+    <button class="gate-btn" id="enterBtn">Enter</button>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- TOOLBAR -->
+<div class="toolbar" id="toolbar">
+  <div class="tb-brand">Community Field</div>
+
+  <button class="tb-btn" onclick="doAction('note')" title="Drop a note">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span>Note</span>
+  </button>
+  <button class="tb-btn" onclick="doAction('photo')" title="Upload photo">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <span>Photo</span>
+  </button>
+  <button class="tb-btn" onclick="doAction('draw')" title="Draw">
+    <svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    <span>Draw</span>
+  </button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="doAction('audio')" title="Upload audio">
+    <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <span>Audio</span>
+  </button>
+  <button class="tb-btn" onclick="doAction('record')" title="Record">
+    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    <span>Record</span>
+  </button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="doAction('radio')" title="Subversive Radio">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49"/><path d="M7.76 16.24a6 6 0 010-8.49"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 19.07a10 10 0 010-14.14"/></svg>
+    <span>Radio</span>
+  </button>
+
+  <div class="live-pill" id="livePill" onclick="toggleLiveList()">
+    <span class="dot"></span> LIVE <span id="liveCount">0</span>
+  </div>
+
+  <div class="tb-info">
+    <span id="onlineCount">0 online</span>
+    <span id="coords"></span>
+  </div>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal" id="noteModal">
+  <div class="modal-box">
+    <div class="modal-head">Drop a Note <button class="modal-close" onclick="closeModal('noteModal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label>Your note</label>
+        <textarea id="noteText" rows="4" maxlength="280" placeholder="Write something..."></textarea>
       </div>
-      <button class="gate-enter" id="enterBtn">Enter the Field</button>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px">Click on the map to place it, or it drops at center.</div>
+      <button class="modal-submit" onclick="submitNote()">Place on Map</button>
     </div>
   </div>
 </div>
 
-<!-- DESKTOP -->
-<div id="desktop"></div>
-
-<!-- TASKBAR -->
-<div class="taskbar" id="taskbar" style="display:none">
-  <button class="start-btn" id="startBtn" onclick="toggleStart()">
-    <span class="start-icon">&#127793;</span> Field
-  </button>
-  <div class="task-sep"></div>
-  <div class="task-items" id="taskItems"></div>
-  <div class="live-notify" id="liveNotify" onclick="toggleLiveDropdown(event)">
-    <span class="live-dot"></span> LIVE <span class="live-count" id="liveCount">0</span>
-    <div class="live-dropdown" id="liveDropdown"></div>
-  </div>
-  <div class="task-clock">
-    <span id="clock">00:00</span>
-    <span class="task-users" id="taskUsers">0</span>
-  </div>
-</div>
-
-<!-- START MENU -->
-<div class="start-menu" id="startMenu">
-  <div class="start-menu-header">COMMUNITY FIELD</div>
-  <div class="start-menu-items">
-    <div class="start-item contributor-only" onclick="doAction('note')"><span class="si-icon">&#128221;</span> Drop a Note</div>
-    <div class="start-item contributor-only" onclick="doAction('record')"><span class="si-icon">&#9210;</span> Record Audio</div>
-    <div class="start-item contributor-only" onclick="doAction('upload')"><span class="si-icon">&#127925;</span> Upload MP3</div>
-    <div class="start-item contributor-only" onclick="doAction('live')"><span class="si-icon">&#127908;</span> Go Live</div>
-    <div class="start-sep"></div>
-    <div class="start-item contributor-only" onclick="doAction('zine')"><span class="si-icon">&#128214;</span> Upload Zine (PDF)</div>
-    <div class="start-sep"></div>
-    <div class="start-item" onclick="doAction('radio')"><span class="si-icon">&#128225;</span> Subversive Radio</div>
-    <div class="start-sep"></div>
-    <div class="start-item" onclick="doAction('about')"><span class="si-icon">&#8505;</span> About</div>
+<!-- PHOTO MODAL -->
+<div class="modal" id="photoModal">
+  <div class="modal-box">
+    <div class="modal-head">Upload Photo <button class="modal-close" onclick="closeModal('photoModal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="field-group">
+        <label>Image</label>
+        <input type="file" id="photoFile" accept="image/*" style="font-family:var(--font);font-size:12px">
+      </div>
+      <div class="field-group">
+        <label>Caption (optional)</label>
+        <input type="text" id="photoCaption" placeholder="..." maxlength="200">
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px">Click on the map to place it, or it drops at center.</div>
+      <button class="modal-submit" onclick="submitPhoto()">Place on Map</button>
+    </div>
   </div>
 </div>
 
-<!-- CONTEXT MENU -->
-<div class="ctx-menu" id="ctxMenu"></div>
+<!-- DRAW OVERLAY -->
+<div class="draw-overlay" id="drawOverlay">
+  <div class="draw-toolbar">
+    <button class="active" data-size="2" onclick="setDrawSize(2,this)">Fine</button>
+    <button data-size="4" onclick="setDrawSize(4,this)">Medium</button>
+    <button data-size="8" onclick="setDrawSize(8,this)">Bold</button>
+    <button onclick="undoDraw()">Undo</button>
+    <button onclick="clearDraw()">Clear</button>
+    <button onclick="saveDraw()" style="font-weight:600;color:var(--fg)">Save</button>
+    <button onclick="cancelDraw()">Cancel</button>
+  </div>
+  <canvas class="draw-canvas" id="drawCanvas"></canvas>
+</div>
 
-<!-- HIDDEN FILE INPUTS -->
+<!-- UPLOAD TOAST -->
+<div class="upload-toast" id="uploadToast">uploading...</div>
+
+<!-- HIDDEN -->
 <input type="file" id="audioFileInput" accept="audio/*" style="display:none">
-<input type="file" id="zineFileInput" accept=".pdf" style="display:none">
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 // ---- STATE ------------------------------------------------------------------
-const state = {
-  userId: null, userName: '', role: 'contributor',
-  panX: 0, panY: 0, zoom: 1
+const S = {
+  userId: null, userName: '', map: null, pendingLatLng: null, activeModal: null
 };
 let socket = null;
-const wins = new Map();
-let winZ = 10;
-let focusedWin = null;
-let startOpen = false;
 let audioCtx = null;
 let userCount = 0;
+const pins = new Map();
 const liveStations = new Map();
 
 function ensureAudio() {
@@ -291,31 +295,41 @@ function ensureAudio() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-// ---- GATE -------------------------------------------------------------------
-let selectedRole = 'contributor';
-function selectRole(el) {
-  document.querySelectorAll('.gate-role').forEach(r => r.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedRole = el.dataset.role;
+// ---- MAP SETUP --------------------------------------------------------------
+function initMap() {
+  S.map = L.map('map', {
+    center: [51.505, -0.09],
+    zoom: 3,
+    zoomControl: true,
+    attributionControl: true
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(S.map);
+
+  S.map.on('click', e => {
+    S.pendingLatLng = e.latlng;
+    document.getElementById('coords').textContent =
+      e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+  });
+
+  S.map.on('mousemove', e => {
+    document.getElementById('coords').textContent =
+      e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+  });
 }
 
-document.getElementById('enterBtn').addEventListener('click', enterField);
-document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') enterField(); });
+// ---- GATE -------------------------------------------------------------------
+document.getElementById('enterBtn').addEventListener('click', enter);
+document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') enter(); });
 
-function enterField() {
-  ensureAudio();
-  state.userName = document.getElementById('nameInput').value.trim() || 'anonymous';
-  state.role = selectedRole;
+function enter() {
+  S.userName = document.getElementById('nameInput').value.trim() || 'anonymous';
   document.getElementById('gate').style.display = 'none';
-  document.getElementById('taskbar').style.display = 'flex';
-
-  if (state.role === 'listener') {
-    document.querySelectorAll('.contributor-only').forEach(el => {
-      el.classList.add('disabled');
-      el.onclick = null;
-    });
-  }
-
+  document.getElementById('toolbar').classList.add('visible');
+  initMap();
   connectSocket();
 }
 
@@ -324,594 +338,413 @@ function connectSocket() {
   socket = io({ transports: ['websocket', 'polling'] });
 
   socket.on('connect', () => {
-    socket.emit('join-room', { roomId: 'default', name: state.userName });
+    socket.emit('join-room', { roomId: 'default', name: S.userName });
   });
 
   socket.on('room-state', data => {
-    state.userId = data.userId;
+    S.userId = data.userId;
     userCount = data.users.length;
-    updateTaskUsers();
-    data.stations.forEach(st => {
-      if (!wins.has(st.id)) createPlayerFromServer(st);
-      if (st.live) liveStations.set(st.id, { id: st.id, name: st.name || 'untitled' });
-    });
-    updateLiveNotify();
-    data.notes.forEach(n => {
-      if (!wins.has(n.id)) createNoteFromServer(n);
-    });
-    if (data.zines) data.zines.forEach(z => {
-      if (!wins.has(z.id)) createZineFromServer(z);
-    });
+    updateOnline();
+
+    data.notes.forEach(n => { if (!pins.has(n.id)) addNotePin(n); });
+    data.stations.forEach(st => { if (!pins.has(st.id)) addAudioPin(st); });
+    if (data.photos) data.photos.forEach(p => { if (!pins.has(p.id)) addPhotoPin(p); });
+    if (data.drawings) data.drawings.forEach(d => { if (!pins.has(d.id)) addDrawingPin(d); });
   });
 
-  socket.on('user-count', c => { userCount = c; updateTaskUsers(); });
-  socket.on('user-joined', () => {});
-  socket.on('user-left', () => {});
+  socket.on('user-count', c => { userCount = c; updateOnline(); });
 
-  socket.on('note-placed', n => {
-    if (!wins.has(n.id)) createNoteFromServer(n);
-  });
-  socket.on('note-removed', id => { removeWin(id); });
+  socket.on('note-placed', n => { if (!pins.has(n.id)) addNotePin(n); });
+  socket.on('note-removed', id => removePin(id));
 
-  socket.on('station-placed', st => {
-    if (!wins.has(st.id)) createPlayerFromServer(st);
-  });
-  socket.on('station-removed', id => { removeWin(id); liveStations.delete(id); updateLiveNotify(); });
+  socket.on('station-placed', st => { if (!pins.has(st.id)) addAudioPin(st); });
+  socket.on('station-removed', id => { removePin(id); liveStations.delete(id); updateLive(); });
   socket.on('station-audio', data => {
-    const w = wins.get(data.stationId);
-    if (w && data.audioFileId) {
-      w.audioFileId = data.audioFileId;
-      loadAudioForWin(w);
-    }
+    const p = pins.get(data.stationId);
+    if (p) { p.data.audioFileId = data.audioFileId; p.data.hasAudio = true; }
   });
   socket.on('station-live', data => {
-    const w = wins.get(data.stationId);
-    if (w) { w.live = true; w.type = 'live'; updateWinTitle(w); }
-    liveStations.set(data.stationId, { id: data.stationId, name: w ? (w.name || 'untitled') : 'live station' });
-    updateLiveNotify();
+    const p = pins.get(data.stationId);
+    if (p) { p.data.live = true; updatePinIcon(p); }
+    liveStations.set(data.stationId, { id: data.stationId, name: p ? p.data.name : 'live' });
+    updateLive();
   });
   socket.on('station-off-air', id => {
-    const w = wins.get(id);
-    if (w) { w.live = false; w.type = w.audioFileId ? 'recording' : 'empty'; updateWinTitle(w); }
+    const p = pins.get(id);
+    if (p) { p.data.live = false; updatePinIcon(p); }
     liveStations.delete(id);
-    updateLiveNotify();
-  });
-  socket.on('station-broadcast', data => {
-    const w = wins.get(data.stationId);
-    if (w) { w.type = 'broadcast'; w.broadcastUrl = data.broadcastUrl; updateWinTitle(w); }
-  });
-  socket.on('station-updated', data => {
-    const w = wins.get(data.id);
-    if (w) { w.name = data.name; updateWinTitle(w); }
+    updateLive();
   });
 
-  socket.on('zine-placed', z => {
-    if (!wins.has(z.id)) createZineFromServer(z);
-  });
-  socket.on('zine-removed', id => { removeWin(id); });
+  socket.on('photo-placed', p => { if (!pins.has(p.id)) addPhotoPin(p); });
+  socket.on('photo-removed', id => removePin(id));
+
+  socket.on('drawing-placed', d => { if (!pins.has(d.id)) addDrawingPin(d); });
+  socket.on('drawing-removed', id => removePin(id));
 
   socket.on('live-audio', data => {
-    // receive live PCM and play it
-    const w = wins.get(data.stationId);
-    if (w && w.type === 'live' && data.audio) playLivePCM(w, data.audio);
+    const p = pins.get(data.stationId);
+    if (p && p.data.live && data.audio) playLivePCM(data.audio);
   });
 
-  socket.on('kicked', msg => {
-    alert(msg);
-    location.reload();
-  });
+  socket.on('kicked', msg => { alert(msg); location.reload(); });
 }
 
-function updateTaskUsers() {
-  document.getElementById('taskUsers').textContent = userCount + ' online';
+function updateOnline() {
+  document.getElementById('onlineCount').textContent = userCount + ' online';
 }
 
-// ---- WINDOW SYSTEM ----------------------------------------------------------
-function createWin(opts) {
-  const el = document.createElement('div');
-  el.className = 'win ' + (opts.extraClass || '');
-  el.style.left = (opts.x || 100) + 'px';
-  el.style.top = (opts.y || 100) + 'px';
-  if (opts.width) el.style.width = opts.width + 'px';
-
-  const titleBar = document.createElement('div');
-  titleBar.className = 'win-title';
-  const titleText = document.createElement('span');
-  titleText.textContent = opts.title || 'Window';
-  titleBar.appendChild(titleText);
-
-  if (opts.closable !== false) {
-    const closeBtn = document.createElement('div');
-    closeBtn.className = 'win-btn';
-    closeBtn.textContent = 'X';
-    closeBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      if (opts.onClose) opts.onClose();
-      else removeWin(opts.id);
-    });
-    titleBar.appendChild(closeBtn);
-  }
-
-  const body = document.createElement('div');
-  body.className = 'win-body';
-
-  el.appendChild(titleBar);
-  el.appendChild(body);
-  document.getElementById('desktop').appendChild(el);
-
-  // dragging
-  let dragging = false, dx = 0, dy = 0;
-  titleBar.addEventListener('pointerdown', e => {
-    dragging = true;
-    dx = e.clientX - el.offsetLeft;
-    dy = e.clientY - el.offsetTop;
-    focusWin(opts.id);
-    e.preventDefault();
-  });
-  window.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    el.style.left = (e.clientX - dx) + 'px';
-    el.style.top = (e.clientY - dy) + 'px';
-  });
-  window.addEventListener('pointerup', () => { dragging = false; });
-
-  el.addEventListener('pointerdown', () => focusWin(opts.id));
-
-  const w = {
-    id: opts.id, el, body, titleText, type: opts.type || 'generic',
-    name: opts.title, taskLabel: opts.taskLabel || opts.title,
-    ...opts.data
-  };
-  wins.set(opts.id, w);
-  focusWin(opts.id);
-  updateTaskbar();
-  return w;
-}
-
-function focusWin(id) {
-  wins.forEach(w => w.el.classList.remove('focused'));
-  wins.forEach(w => w.el.classList.add('unfocused'));
-  const w = wins.get(id);
-  if (w) {
-    w.el.classList.add('focused');
-    w.el.classList.remove('unfocused');
-    w.el.style.zIndex = ++winZ;
-    focusedWin = id;
-  }
-  updateTaskbar();
-}
-
-function hideWin(id) {
-  const w = wins.get(id);
-  if (!w) return;
-  w.el.style.display = 'none';
-  w._hidden = true;
-  updateTaskbar();
-}
-
-function removeWin(id) {
-  const w = wins.get(id);
-  if (!w) return;
-  if (w._audio) { w._audio.pause(); w._audio.src = ''; }
-  if (w._stream) { w._stream.getTracks().forEach(t => t.stop()); }
-  w.el.remove();
-  wins.delete(id);
-  updateTaskbar();
-}
-
-function updateWinTitle(w) {
-  if (!w) return;
-  let t = w.name || 'untitled';
-  if (w.live) t += ' [LIVE]';
-  else if (w.type === 'broadcast') t += ' [BROADCAST]';
-  else if (w.type === 'recording') t += ' [PLAYING]';
-  w.titleText.textContent = t;
-  w.taskLabel = t;
-  updateTaskbar();
-}
-
-// ---- TASKBAR ----------------------------------------------------------------
-function updateTaskbar() {
-  const container = document.getElementById('taskItems');
-  container.innerHTML = '';
-  wins.forEach(w => {
-    const btn = document.createElement('div');
-    btn.className = 'task-item' + (focusedWin === w.id ? ' active' : '');
-    const icons = { note: '&#128221;', player: '&#127925;', recorder: '&#9210;', live: '&#127908;', zine: '&#128214;', about: '&#8505;' };
-    btn.innerHTML = '<span>' + (icons[w.type] || '') + '</span> ' + esc(w.taskLabel || w.name || w.id);
-    btn.addEventListener('click', () => {
-      if (focusedWin === w.id) {
-        w.el.style.display = w.el.style.display === 'none' ? 'flex' : 'none';
-      } else {
-        w.el.style.display = 'flex';
-        focusWin(w.id);
-      }
-    });
-    container.appendChild(btn);
+// ---- PIN SYSTEM -------------------------------------------------------------
+function makeIcon(type, live) {
+  const icons = { note: '&#9998;', audio: '&#9835;', photo: '&#9673;', drawing: '&#9997;' };
+  const cls = live ? 'live' : type;
+  return L.divIcon({
+    className: 'pin-marker',
+    html: `<div class="pin-icon ${cls}">${icons[type] || '&#8226;'}</div>`,
+    iconSize: [32, 32], iconAnchor: [16, 16]
   });
 }
 
-// clock
-setInterval(() => {
-  const d = new Date();
-  document.getElementById('clock').textContent =
-    d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
-}, 5000);
-
-// ---- START MENU -------------------------------------------------------------
-function toggleStart() {
-  startOpen = !startOpen;
-  document.getElementById('startMenu').classList.toggle('open', startOpen);
-  document.getElementById('startBtn').classList.toggle('pressed', startOpen);
-}
-document.addEventListener('click', e => {
-  if (startOpen && !e.target.closest('.start-menu') && !e.target.closest('.start-btn')) {
-    startOpen = false;
-    document.getElementById('startMenu').classList.remove('open');
-    document.getElementById('startBtn').classList.remove('pressed');
-  }
-  if (!e.target.closest('.ctx-menu')) {
-    document.getElementById('ctxMenu').classList.remove('open');
-  }
-});
-
-// ---- ACTIONS ----------------------------------------------------------------
-function doAction(action) {
-  startOpen = false;
-  document.getElementById('startMenu').classList.remove('open');
-  document.getElementById('startBtn').classList.remove('pressed');
-
-  if (state.role === 'listener' && !['about','radio'].includes(action)) return;
-
-  switch (action) {
-    case 'note': openNoteComposer(); break;
-    case 'record': openRecorder(); break;
-    case 'upload': document.getElementById('audioFileInput').click(); break;
-    case 'live': goLive(); break;
-    case 'zine': document.getElementById('zineFileInput').click(); break;
-    case 'radio': openSubversiveRadio(); break;
-    case 'about': openAbout(); break;
-  }
+function getLatLng(item) {
+  if (item.lat != null && item.lng != null) return [item.lat, item.lng];
+  const c = S.map.getCenter();
+  return [c.lat + (Math.random() - .5) * .01, c.lng + (Math.random() - .5) * .01];
 }
 
-// ---- NOTE -------------------------------------------------------------------
-function openNoteComposer() {
-  const id = '_compose_note_' + Date.now();
-  const w = createWin({
-    id, title: 'New Note', type: 'note', x: 150 + Math.random()*200, y: 80 + Math.random()*150,
-    width: 250, onClose: () => removeWin(id)
-  });
-  w.body.innerHTML = `
-    <textarea style="width:100%;height:80px;resize:vertical;border:2px inset var(--win-border-dark);
-      font-family:var(--sys);font-size:12px;padding:4px" maxlength="280" placeholder="Write something..."></textarea>
-    <div style="display:flex;justify-content:flex-end;margin-top:6px">
-      <button class="win-btn" style="width:auto;padding:2px 12px;font-size:10px" onclick="submitNote('${id}')">Post</button>
-    </div>`;
+function addNotePin(n) {
+  const ll = getLatLng(n);
+  const marker = L.marker(ll, { icon: makeIcon('note') }).addTo(S.map);
+  const html = `<div class="card"><div class="card-body">
+    <div class="card-text">${esc(n.text)}</div>
+    <div class="card-meta"><span class="card-author">${esc(n.author || '?')}</span><span>${n.time || ''}</span></div>
+  </div></div>`;
+  marker.bindPopup(html, { maxWidth: 300 });
+  pins.set(n.id, { marker, type: 'note', data: n });
 }
 
-function submitNote(composerId) {
-  const w = wins.get(composerId);
-  if (!w) return;
-  const text = w.body.querySelector('textarea').value.trim();
-  if (!text) return;
-  const x = parseInt(w.el.style.left) || 200;
-  const y = parseInt(w.el.style.top) || 200;
-  socket.emit('place-note', { text, x, y });
-  removeWin(composerId);
+function addPhotoPin(p) {
+  const ll = getLatLng(p);
+  const marker = L.marker(ll, { icon: makeIcon('photo') }).addTo(S.map);
+  const cap = p.caption ? `<div class="card-text">${esc(p.caption)}</div>` : '';
+  const html = `<div class="card">
+    <img class="card-img" src="/api/image/${p.fileId}" alt="photo" loading="lazy">
+    <div class="card-body">${cap}
+      <div class="card-meta"><span class="card-author">${esc(p.author || '?')}</span><span>${fmtTime(p.time)}</span></div>
+    </div></div>`;
+  marker.bindPopup(html, { maxWidth: 320 });
+  pins.set(p.id, { marker, type: 'photo', data: p });
 }
 
-function createNoteFromServer(n) {
-  const w = createWin({
-    id: n.id, title: 'Note — ' + (n.author || '?'), type: 'note',
-    x: n.x || 100, y: n.y || 100, width: 220,
-    closable: false
-  });
-  w.body.innerHTML = `<div class="note-body">${esc(n.text)}</div>
-    <div class="note-meta">${esc(n.author || '?')} · ${n.time || ''}</div>`;
-}
-
-// ---- PLAYER (MP3) -----------------------------------------------------------
-function createPlayerFromServer(st) {
-  const w = createWin({
-    id: st.id, title: st.name || 'untitled', type: 'player',
-    extraClass: 'player', x: st.x || 100, y: st.y || 100,
-    closable: false,
-    data: { audioFileId: st.audioFileId, live: st.live, stationType: st.type, owner: st.owner, name: st.name }
-  });
-
-  w.body.innerHTML = `
-    <div class="player-display">
-      <div class="player-title-scroll">${esc(st.name || 'untitled')}</div>
-      <div class="player-time">0:00</div>
-    </div>
-    <div class="player-controls">
-      <button onclick="playerCmd('${st.id}','prev')" title="Previous">|&lt;</button>
-      <button onclick="playerCmd('${st.id}','play')" title="Play">&#9654;</button>
-      <button onclick="playerCmd('${st.id}','pause')" title="Pause">||</button>
-      <button onclick="playerCmd('${st.id}','stop')" title="Stop">&#9632;</button>
-      <button onclick="playerCmd('${st.id}','next')" title="Next">&gt;|</button>
-    </div>
-    <div class="player-progress" onclick="playerSeek(event,'${st.id}')">
-      <div class="player-progress-fill" style="width:0%"></div>
-    </div>
-    <div class="player-vol">
-      vol <input type="range" min="0" max="100" value="80" oninput="playerVol('${st.id}',this.value)">
-    </div>`;
-
-  if (st.audioFileId) {
-    w.audioFileId = st.audioFileId;
-    loadAudioForWin(w);
-  }
+function addAudioPin(st) {
+  const ll = getLatLng(st);
+  const marker = L.marker(ll, { icon: makeIcon('audio', st.live) }).addTo(S.map);
+  marker.on('click', () => openAudioPopup(st, marker));
+  pins.set(st.id, { marker, type: 'audio', data: st });
   if (st.live) {
-    w.live = true; w.type = 'live';
+    liveStations.set(st.id, { id: st.id, name: st.name || 'live' });
+    updateLive();
   }
-  updateWinTitle(w);
 }
 
-function loadAudioForWin(w) {
-  if (!w.audioFileId) return;
-  if (w._audio) { w._audio.pause(); w._audio.src = ''; }
-  const audio = new Audio('/api/audio/' + w.audioFileId);
-  audio.loop = true;
+function openAudioPopup(st, marker) {
+  ensureAudio();
+  const id = st.id;
+  const html = `<div class="card"><div class="audio-card">
+    <div class="audio-title">${esc(st.name || 'untitled')}</div>
+    <div class="audio-wave" id="wave_${id}">${Array(24).fill(0).map(() => '<div class="audio-bar" style="height:3px"></div>').join('')}</div>
+    <div class="audio-controls">
+      <button class="audio-play" id="playbtn_${id}" onclick="toggleAudio('${id}')">
+        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      </button>
+      <span class="audio-time" id="time_${id}">0:00</span>
+      <input type="range" class="audio-vol" min="0" max="100" value="80" oninput="setVol('${id}',this.value)">
+    </div>
+    <div class="card-meta" style="margin-top:10px"><span class="card-author">${esc(st.owner || '')}</span><span>${st.live ? 'LIVE' : ''}</span></div>
+  </div></div>`;
+  marker.bindPopup(html, { maxWidth: 280 }).openPopup();
+
+  if (st.audioFileId && !st.live) {
+    setTimeout(() => loadPinAudio(st), 100);
+  }
+}
+
+const audioPlayers = new Map();
+
+function loadPinAudio(st) {
+  if (audioPlayers.has(st.id)) return;
+  const audio = new Audio('/api/audio/' + st.audioFileId);
   audio.volume = 0.8;
-  w._audio = audio;
-  w.type = 'player';
+  audioPlayers.set(st.id, audio);
 
   audio.addEventListener('timeupdate', () => {
     if (!audio.duration) return;
-    const pct = (audio.currentTime / audio.duration * 100).toFixed(1);
-    const fill = w.body.querySelector('.player-progress-fill');
-    if (fill) fill.style.width = pct + '%';
-    const m = Math.floor(audio.currentTime / 60), s = Math.floor(audio.currentTime % 60);
-    const timeEl = w.body.querySelector('.player-time');
-    if (timeEl) timeEl.textContent = m + ':' + s.toString().padStart(2, '0');
+    const t = document.getElementById('time_' + st.id);
+    if (t) {
+      const m = Math.floor(audio.currentTime / 60), s = Math.floor(audio.currentTime % 60);
+      t.textContent = m + ':' + s.toString().padStart(2, '0');
+    }
+    const bars = document.querySelectorAll('#wave_' + st.id + ' .audio-bar');
+    const pct = audio.currentTime / audio.duration;
+    bars.forEach((b, i) => {
+      const active = i / bars.length <= pct;
+      b.classList.toggle('active', active);
+      b.style.height = (active ? 8 + Math.random() * 20 : 3) + 'px';
+    });
   });
-
-  audio.play().catch(() => {});
-  updateWinTitle(w);
 }
 
-function playerCmd(id, cmd) {
-  ensureAudio();
-  const w = wins.get(id);
-  if (!w || !w._audio) return;
-  switch (cmd) {
-    case 'play': w._audio.play().catch(() => {}); break;
-    case 'pause': w._audio.pause(); break;
-    case 'stop': w._audio.pause(); w._audio.currentTime = 0; break;
-    case 'prev': w._audio.currentTime = Math.max(0, w._audio.currentTime - 10); break;
-    case 'next': w._audio.currentTime = Math.min(w._audio.duration || 0, w._audio.currentTime + 10); break;
+function toggleAudio(id) {
+  const audio = audioPlayers.get(id);
+  if (!audio) return;
+  if (audio.paused) { audio.play().catch(() => {}); }
+  else { audio.pause(); }
+}
+
+function setVol(id, val) {
+  const audio = audioPlayers.get(id);
+  if (audio) audio.volume = val / 100;
+}
+
+function addDrawingPin(d) {
+  const ll = getLatLng(d);
+  const marker = L.marker(ll, { icon: makeIcon('drawing') }).addTo(S.map);
+  let svgPaths = '';
+  if (d.paths) {
+    d.paths.forEach(p => {
+      svgPaths += `<path d="${p.d}" stroke="${p.color||'#111'}" stroke-width="${p.w||2}" fill="none" stroke-linecap="round"/>`;
+    });
+  }
+  const html = `<div class="card"><div class="drawing-card">
+    <svg viewBox="0 0 300 300" width="300" height="300" style="background:#fff">${svgPaths}</svg>
+  </div><div class="card-body">
+    <div class="card-meta"><span class="card-author">${esc(d.author || '?')}</span><span>${fmtTime(d.time)}</span></div>
+  </div></div>`;
+  marker.bindPopup(html, { maxWidth: 320 });
+  pins.set(d.id, { marker, type: 'drawing', data: d });
+}
+
+function updatePinIcon(p) {
+  if (!p || !p.marker) return;
+  p.marker.setIcon(makeIcon(p.type, p.data.live));
+}
+
+function removePin(id) {
+  const p = pins.get(id);
+  if (!p) return;
+  if (p.marker) S.map.removeLayer(p.marker);
+  const audio = audioPlayers.get(id);
+  if (audio) { audio.pause(); audio.src = ''; audioPlayers.delete(id); }
+  pins.delete(id);
+}
+
+// ---- ACTIONS ----------------------------------------------------------------
+function doAction(action) {
+  switch (action) {
+    case 'note': openModal('noteModal'); break;
+    case 'photo': openModal('photoModal'); break;
+    case 'draw': openDrawOverlay(); break;
+    case 'audio': document.getElementById('audioFileInput').click(); break;
+    case 'record': openRecorder(); break;
+    case 'radio': openRadio(); break;
   }
 }
 
-function playerSeek(e, id) {
-  const w = wins.get(id);
-  if (!w || !w._audio || !w._audio.duration) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const pct = (e.clientX - rect.left) / rect.width;
-  w._audio.currentTime = pct * w._audio.duration;
+function openModal(id) {
+  S.activeModal = id;
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  S.activeModal = null;
 }
 
-function playerVol(id, val) {
-  const w = wins.get(id);
-  if (w && w._audio) w._audio.volume = val / 100;
+// ---- NOTE -------------------------------------------------------------------
+function submitNote() {
+  const text = document.getElementById('noteText').value.trim();
+  if (!text) return;
+  const ll = S.pendingLatLng || S.map.getCenter();
+  socket.emit('place-note', { text, lat: ll.lat, lng: ll.lng, x: 0, y: 0 });
+  document.getElementById('noteText').value = '';
+  closeModal('noteModal');
+  S.pendingLatLng = null;
 }
 
-// ---- UPLOAD MP3 -------------------------------------------------------------
+// ---- PHOTO ------------------------------------------------------------------
+async function submitPhoto() {
+  const file = document.getElementById('photoFile').files[0];
+  if (!file) return;
+  const caption = document.getElementById('photoCaption').value.trim();
+  showToast('uploading...');
+
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch('/api/image/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  hideToast();
+
+  if (data.fileId) {
+    const ll = S.pendingLatLng || S.map.getCenter();
+    socket.emit('place-photo', { fileId: data.fileId, caption, lat: ll.lat, lng: ll.lng });
+  }
+  document.getElementById('photoFile').value = '';
+  document.getElementById('photoCaption').value = '';
+  closeModal('photoModal');
+  S.pendingLatLng = null;
+}
+
+// ---- AUDIO UPLOAD -----------------------------------------------------------
 document.getElementById('audioFileInput').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
   e.target.value = '';
+  showToast('uploading...');
 
-  const x = 100 + Math.random() * 400;
-  const y = 80 + Math.random() * 300;
+  const fd = new FormData();
+  fd.append('audio', file);
+  const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  hideToast();
 
-  socket.emit('place-station', { name: file.name.replace(/\.[^.]+$/, ''), x, y, reach: 460 });
-
-  // wait for station-placed event
-  const handler = async (st) => {
-    if (st.owner !== state.userId) return;
-    socket.off('station-placed', handler);
-
-    const fd = new FormData();
-    fd.append('audio', file);
-    const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.fileId) {
+  if (data.fileId) {
+    const ll = S.pendingLatLng || S.map.getCenter();
+    socket.emit('place-station', { name: file.name.replace(/\.[^.]+$/, ''), x: 0, y: 0, lat: ll.lat, lng: ll.lng });
+    const handler = st => {
+      if (st.owner !== S.userId) return;
+      socket.off('station-placed', handler);
       socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
-    }
-  };
-  socket.on('station-placed', handler);
+    };
+    socket.on('station-placed', handler);
+  }
+  S.pendingLatLng = null;
 });
 
 // ---- RECORDER ---------------------------------------------------------------
+let recState = null;
 function openRecorder() {
-  const id = '_rec_' + Date.now();
-  const w = createWin({
-    id, title: 'Recorder', type: 'recorder', extraClass: 'recorder',
-    x: 200 + Math.random() * 200, y: 100 + Math.random() * 150, width: 240,
-    onClose: () => {
-      if (w._stream) w._stream.getTracks().forEach(t => t.stop());
-      if (w._recorder && w._recorder.state === 'recording') w._recorder.stop();
-      removeWin(id);
-    }
-  });
-  w.body.innerHTML = `
-    <div class="rec-timer">0:00</div>
-    <button class="rec-btn" onclick="toggleRecording('${id}')">REC</button>
-    <div class="rec-status">click to start recording</div>`;
-  w._recording = false;
-  w._startTime = 0;
-}
-
-async function toggleRecording(id) {
   ensureAudio();
-  const w = wins.get(id);
-  if (!w) return;
-
-  if (!w._recording) {
-    // start
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      w._stream = stream;
-      const recorder = new MediaRecorder(stream);
-      w._recorder = recorder;
-      const chunks = [];
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = async () => {
-        w._stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunks, { type: recorder.mimeType });
-        clearInterval(w._timerInt);
-
-        w.body.querySelector('.rec-status').textContent = 'uploading...';
-        w.body.querySelector('.rec-btn').className = 'rec-btn stopped';
-        w.body.querySelector('.rec-btn').textContent = '...';
-
-        // place station and upload
-        const x = parseInt(w.el.style.left) || 200;
-        const y = parseInt(w.el.style.top) || 200;
-        socket.emit('place-station', { name: 'recording ' + new Date().toLocaleTimeString(), x, y, reach: 460 });
-
-        const handler = async (st) => {
-          if (st.owner !== state.userId) return;
+  if (recState) return;
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType });
+      showToast('uploading recording...');
+      const fd = new FormData();
+      fd.append('audio', blob, 'recording.webm');
+      const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      hideToast();
+      if (data.fileId) {
+        const ll = S.pendingLatLng || S.map.getCenter();
+        socket.emit('place-station', { name: 'recording ' + new Date().toLocaleTimeString(), x: 0, y: 0, lat: ll.lat, lng: ll.lng });
+        const handler = st => {
+          if (st.owner !== S.userId) return;
           socket.off('station-placed', handler);
-          const fd = new FormData();
-          fd.append('audio', blob, 'recording.webm');
-          const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
-          const data = await res.json();
-          if (data.fileId) {
-            socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
-          }
-          removeWin(id);
+          socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
         };
         socket.on('station-placed', handler);
-      };
-
-      recorder.start();
-      w._recording = true;
-      w._startTime = Date.now();
-      w.body.querySelector('.rec-btn').className = 'rec-btn recording';
-      w.body.querySelector('.rec-btn').textContent = 'STOP';
-      w.body.querySelector('.rec-status').textContent = 'recording...';
-      w._timerInt = setInterval(() => {
-        const sec = Math.floor((Date.now() - w._startTime) / 1000);
-        const m = Math.floor(sec / 60), s = sec % 60;
-        w.body.querySelector('.rec-timer').textContent = m + ':' + s.toString().padStart(2, '0');
-      }, 200);
-    } catch (err) {
-      w.body.querySelector('.rec-status').textContent = 'mic access denied';
-    }
-  } else {
-    // stop
-    w._recording = false;
-    if (w._recorder && w._recorder.state === 'recording') w._recorder.stop();
-  }
-}
-
-// ---- GO LIVE ----------------------------------------------------------------
-function goLive() {
-  const id = '_live_' + Date.now();
-  const w = createWin({
-    id, title: 'Go Live', type: 'live', extraClass: 'live-win',
-    x: 200 + Math.random() * 200, y: 100 + Math.random() * 150, width: 220,
-    onClose: () => {
-      if (w._stationId) socket.emit('stop-on-air', w._stationId);
-      if (w._stream) w._stream.getTracks().forEach(t => t.stop());
-      removeWin(id);
-    }
-  });
-
-  w.body.innerHTML = `
-    <div class="live-body">
-      <div style="margin-bottom:8px">Station name:</div>
-      <input type="text" style="width:100%;padding:3px;border:2px inset #888;font-size:11px;margin-bottom:8px"
-        id="liveName" placeholder="my live show" maxlength="40">
-      <button style="padding:4px 16px;font-size:11px;cursor:pointer" onclick="startLive('${id}')">GO LIVE</button>
-    </div>`;
-}
-
-async function startLive(id) {
-  ensureAudio();
-  const w = wins.get(id);
-  if (!w) return;
-
-  const name = w.body.querySelector('#liveName').value.trim() || 'live session';
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    w._stream = stream;
-
-    const x = parseInt(w.el.style.left) || 200;
-    const y = parseInt(w.el.style.top) || 200;
-    socket.emit('place-station', { name, x, y, reach: 460 });
-
-    const handler = (st) => {
-      if (st.owner !== state.userId) return;
-      socket.off('station-placed', handler);
-      w._stationId = st.id;
-      socket.emit('go-on-air', st.id);
-
-      w.body.innerHTML = `
-        <div class="live-body">
-          <div class="live-indicator">&#9679; ON AIR</div>
-          <div class="live-bars" id="liveBars_${id}">
-            ${Array(16).fill(0).map(() => '<div class="live-bar" style="height:2px"></div>').join('')}
-          </div>
-          <div style="font-size:10px;color:#888">${esc(name)}</div>
-          <button style="margin-top:10px;padding:4px 16px;font-size:11px;cursor:pointer;background:#aa0000;color:#fff;border:1px solid #880000"
-            onclick="stopLiveWin('${id}')">STOP</button>
-        </div>`;
-
-      // send PCM chunks
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      const src = ctx.createMediaStreamSource(stream);
-      const proc = ctx.createScriptProcessor(4096, 1, 1);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
-      src.connect(analyser);
-      src.connect(proc);
-      proc.connect(ctx.destination);
-      w._procNode = proc;
-      w._analyserNode = analyser;
-      w._audioCtx = ctx;
-
-      proc.onaudioprocess = e => {
-        const f32 = e.inputBuffer.getChannelData(0);
-        const i16 = new Int16Array(f32.length);
-        for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32768));
-        socket.volatile.emit('live-audio', { stationId: st.id, audio: i16.buffer });
-      };
-
-      // visualize
-      const bins = new Uint8Array(analyser.frequencyBinCount);
-      function drawLive() {
-        if (!wins.has(id)) return;
-        analyser.getByteFrequencyData(bins);
-        const bars = document.querySelectorAll(`#liveBars_${id} .live-bar`);
-        bars.forEach((bar, i) => {
-          bar.style.height = Math.max(2, bins[i % bins.length] / 255 * 30) + 'px';
-        });
-        requestAnimationFrame(drawLive);
       }
-      drawLive();
+      recState = null;
+      S.pendingLatLng = null;
     };
-    socket.on('station-placed', handler);
-  } catch (err) {
-    w.body.innerHTML = '<div class="live-body" style="color:#ff4444">Mic access denied</div>';
+    recorder.start();
+    recState = { recorder, stream, start: Date.now() };
+    showToast('recording... click Record again to stop');
+  }).catch(() => {});
+  if (recState && recState.recorder.state === 'recording') {
+    recState.recorder.stop();
+    hideToast();
   }
 }
 
-function stopLiveWin(id) {
-  const w = wins.get(id);
-  if (!w) return;
-  if (w._stationId) socket.emit('stop-on-air', w._stationId);
-  if (w._stream) w._stream.getTracks().forEach(t => t.stop());
-  if (w._procNode) w._procNode.disconnect();
-  if (w._audioCtx) w._audioCtx.close();
-  removeWin(id);
+// ---- DRAWING ----------------------------------------------------------------
+let drawPaths = [];
+let drawCurrent = null;
+let drawSize = 2;
+
+function openDrawOverlay() {
+  const overlay = document.getElementById('drawOverlay');
+  overlay.classList.add('open');
+  const canvas = document.getElementById('drawCanvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 56;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawPaths = [];
+
+  canvas.onpointerdown = e => {
+    drawCurrent = { d: `M${e.offsetX} ${e.offsetY}`, w: drawSize, color: '#111', points: [[e.offsetX, e.offsetY]] };
+    canvas.setPointerCapture(e.pointerId);
+  };
+  canvas.onpointermove = e => {
+    if (!drawCurrent) return;
+    drawCurrent.d += ` L${e.offsetX} ${e.offsetY}`;
+    drawCurrent.points.push([e.offsetX, e.offsetY]);
+    redrawCanvas(ctx, canvas);
+  };
+  canvas.onpointerup = () => {
+    if (drawCurrent) { drawPaths.push(drawCurrent); drawCurrent = null; }
+  };
 }
 
-// play incoming live PCM
-function playLivePCM(w, buffer) {
+function redrawCanvas(ctx, canvas) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  [...drawPaths, drawCurrent].filter(Boolean).forEach(p => {
+    ctx.beginPath();
+    p.points.forEach((pt, i) => { i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]); });
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = p.w;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  });
+}
+
+function setDrawSize(size, btn) {
+  drawSize = size;
+  document.querySelectorAll('.draw-toolbar button[data-size]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function undoDraw() {
+  drawPaths.pop();
+  const canvas = document.getElementById('drawCanvas');
+  redrawCanvas(canvas.getContext('2d'), canvas);
+}
+function clearDraw() {
+  drawPaths = [];
+  const canvas = document.getElementById('drawCanvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+function cancelDraw() { document.getElementById('drawOverlay').classList.remove('open'); }
+function saveDraw() {
+  if (drawPaths.length === 0) return cancelDraw();
+  const scale = 300 / Math.max(window.innerWidth, window.innerHeight - 56);
+  const normalized = drawPaths.map(p => ({
+    d: p.points.map((pt, i) => (i === 0 ? 'M' : 'L') + (pt[0]*scale).toFixed(1) + ' ' + (pt[1]*scale).toFixed(1)).join(' '),
+    w: p.w * scale, color: p.color
+  }));
+  const ll = S.pendingLatLng || S.map.getCenter();
+  socket.emit('place-drawing', { paths: normalized, lat: ll.lat, lng: ll.lng });
+  document.getElementById('drawOverlay').classList.remove('open');
+  S.pendingLatLng = null;
+}
+
+// ---- RADIO ------------------------------------------------------------------
+let radioAudio = null;
+function openRadio() {
+  ensureAudio();
+  if (radioAudio) { radioAudio.paused ? radioAudio.play().catch(()=>{}) : radioAudio.pause(); return; }
+  radioAudio = new Audio('/api/radio/stream');
+  radioAudio.volume = 0.8;
+  radioAudio.play().catch(() => {});
+  showToast('Subversive Radio playing');
+  setTimeout(hideToast, 2000);
+}
+
+// ---- LIVE PCM ---------------------------------------------------------------
+function playLivePCM(buffer) {
   ensureAudio();
   if (!audioCtx) return;
   const i16 = new Int16Array(buffer);
@@ -925,176 +758,30 @@ function playLivePCM(w, buffer) {
   src.start();
 }
 
-// ---- ZINE UPLOAD ------------------------------------------------------------
-document.getElementById('zineFileInput').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  e.target.value = '';
-
-  const fd = new FormData();
-  fd.append('pdf', file);
-  const res = await fetch('/api/zine/upload', { method: 'POST', body: fd });
-  const data = await res.json();
-  if (data.fileId) {
-    const x = 150 + Math.random() * 300;
-    const y = 80 + Math.random() * 200;
-    socket.emit('place-zine', {
-      title: file.name.replace(/\.pdf$/i, ''),
-      x, y, fileId: data.fileId, originalName: file.name, size: file.size
-    });
-  }
-});
-
-function createZineFromServer(z) {
-  const w = createWin({
-    id: z.id, title: z.title || 'Zine', type: 'zine', extraClass: 'zine-win',
-    x: z.x || 100, y: z.y || 100,
-    closable: false
-  });
-  w.body.innerHTML = `<iframe src="/api/zine/${z.id}/pdf"></iframe>`;
-}
-
-// ---- SUBVERSIVE RADIO -------------------------------------------------------
-function openSubversiveRadio() {
-  if (wins.has('_radio')) { focusWin('_radio'); return; }
-  const w = createWin({
-    id: '_radio', title: 'Subversive Radio', type: 'player', extraClass: 'player',
-    x: 100 + Math.random() * 300, y: 80 + Math.random() * 200,
-    onClose: () => {
-      if (w._audio) { w._audio.pause(); w._audio.src = ''; }
-      removeWin('_radio');
-    }
-  });
-  w.body.innerHTML = `
-    <div class="player-display">
-      <div class="player-title-scroll">Subversive Radio</div>
-      <div class="player-time">LIVE</div>
-    </div>
-    <div class="player-controls">
-      <button onclick="radioCmd('play')" title="Play">&#9654;</button>
-      <button onclick="radioCmd('pause')" title="Pause">||</button>
-      <button onclick="radioCmd('stop')" title="Stop">&#9632;</button>
-    </div>
-    <div class="player-vol">
-      vol <input type="range" min="0" max="100" value="80" oninput="radioVol(this.value)">
-    </div>`;
-  ensureAudio();
-  const audio = new Audio('/api/radio/stream');
-  audio.volume = 0.8;
-  w._audio = audio;
-  audio.play().catch(() => {});
-}
-
-function radioCmd(cmd) {
-  const w = wins.get('_radio');
-  if (!w || !w._audio) return;
-  switch (cmd) {
-    case 'play': w._audio.play().catch(() => {}); break;
-    case 'pause': w._audio.pause(); break;
-    case 'stop': w._audio.pause(); w._audio.currentTime = 0; break;
-  }
-}
-
-function radioVol(val) {
-  const w = wins.get('_radio');
-  if (w && w._audio) w._audio.volume = val / 100;
-}
-
-// ---- ABOUT ------------------------------------------------------------------
-function openAbout() {
-  if (wins.has('_about')) { focusWin('_about'); return; }
-  const w = createWin({
-    id: '_about', title: 'About Community Field', type: 'about',
-    x: 200, y: 120, width: 320, onClose: () => removeWin('_about')
-  });
-  w.body.style.padding = '12px';
-  w.body.innerHTML = `
-    <div style="text-align:center;margin-bottom:10px">
-      <span style="font-size:28px">&#127793;</span>
-      <div style="font-weight:700;font-size:14px;margin-top:4px">Community Field</div>
-      <div style="font-size:10px;color:#888">shared acoustic desktop</div>
-    </div>
-    <div style="font-size:11px;line-height:1.6;color:#444">
-      A shared space where everyone is present at the same time.
-      Drop notes, recordings, MP3 clips, go live, or upload zines.
-      <br><br>
-      <b>Contributors</b> can add content.<br>
-      <b>Listeners</b> browse, read &amp; listen.
-      <br><br>
-      <span style="font-size:9px;color:#888">built with love &amp; socket.io</span>
-    </div>`;
-}
-
-// ---- LIVE NOTIFY ------------------------------------------------------------
-function updateLiveNotify() {
-  const el = document.getElementById('liveNotify');
+// ---- LIVE INDICATOR ---------------------------------------------------------
+function updateLive() {
+  const pill = document.getElementById('livePill');
   const count = liveStations.size;
-  el.classList.toggle('visible', count > 0);
+  pill.classList.toggle('visible', count > 0);
   document.getElementById('liveCount').textContent = count;
 }
-
-function toggleLiveDropdown(e) {
-  e.stopPropagation();
-  const dd = document.getElementById('liveDropdown');
-  const isOpen = dd.classList.toggle('open');
-  if (!isOpen) return;
-
-  let html = '<div class="live-dropdown-title">&#9679; Live Now</div>';
-  if (liveStations.size === 0) {
-    html += '<div style="padding:8px;font-size:10px;color:#888;text-align:center">No one is live</div>';
-  } else {
-    liveStations.forEach(st => {
-      html += `<div class="live-dropdown-item" onclick="tuneLive('${st.id}')">
-        <span class="ld-dot"></span>
-        <span class="ld-name">${esc(st.name)}</span>
-        <span class="ld-listen">LISTEN</span>
-      </div>`;
-    });
-  }
-  dd.innerHTML = html;
+function toggleLiveList() {
+  liveStations.forEach(st => {
+    const p = pins.get(st.id);
+    if (p && p.marker) { S.map.setView(p.marker.getLatLng(), 14); p.marker.openPopup(); }
+  });
 }
-
-function tuneLive(stationId) {
-  document.getElementById('liveDropdown').classList.remove('open');
-  const w = wins.get(stationId);
-  if (w) {
-    w.el.style.display = 'flex';
-    focusWin(stationId);
-  }
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.live-notify')) {
-    document.getElementById('liveDropdown').classList.remove('open');
-  }
-});
 
 // ---- HELPERS ----------------------------------------------------------------
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmtTime(t) { if (!t) return ''; try { return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) { return t; } }
+function showToast(msg) { const t = document.getElementById('uploadToast'); t.textContent = msg; t.classList.add('visible'); }
+function hideToast() { document.getElementById('uploadToast').classList.remove('visible'); }
 
-// right-click context menu on desktop
-document.getElementById('desktop').addEventListener('contextmenu', e => {
-  e.preventDefault();
-  if (state.role === 'listener') return;
-  const menu = document.getElementById('ctxMenu');
-  menu.innerHTML = `
-    <div class="ctx-item" onclick="doAction('note')">&#128221; Drop a Note</div>
-    <div class="ctx-item" onclick="doAction('record')">&#9210; Record Audio</div>
-    <div class="ctx-item" onclick="doAction('upload')">&#127925; Upload MP3</div>
-    <div class="ctx-item" onclick="doAction('live')">&#127908; Go Live</div>
-    <div class="ctx-item" onclick="doAction('zine')">&#128214; Upload Zine</div>`;
-  menu.style.left = e.clientX + 'px';
-  menu.style.top = e.clientY + 'px';
-  menu.classList.add('open');
+// close modals on backdrop click
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
 });
-
-// init clock
-document.getElementById('clock').textContent =
-  new Date().getHours().toString().padStart(2,'0') + ':' + new Date().getMinutes().toString().padStart(2,'0');
 </script>
 </body>
 </html>

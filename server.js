@@ -35,6 +35,15 @@ const uploadAudio = multer({
   limits: { fileSize: 25 * 1024 * 1024 }
 });
 
+const uploadImage = multer({
+  dest: UPLOADS_DIR,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files allowed'));
+  }
+});
+
 const PORT = process.env.PORT || 4567;
 
 // shared state
@@ -47,6 +56,8 @@ function getRoom(id) {
       stations: [],
       notes: [],
       zines: [],
+      photos: [],
+      drawings: [],
       users: new Map(),
       created: Date.now()
     });
@@ -75,7 +86,31 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', rooms: rooms.size, users: totalUsers, uptime: Math.floor(process.uptime()) });
 });
 
-// zine upload endpoint
+// image upload endpoint
+app.post('/api/image/upload', uploadImage.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'no file' });
+  const fileId = uuidv4().slice(0, 12);
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const newPath = path.join(UPLOADS_DIR, fileId + ext);
+  fs.renameSync(req.file.path, newPath);
+  res.json({ fileId, ext, originalName: req.file.originalname, size: req.file.size });
+});
+
+// serve image file
+app.get('/api/image/:fileId', (req, res) => {
+  const dir = fs.readdirSync(UPLOADS_DIR);
+  const match = dir.find(f => f.startsWith(req.params.fileId));
+  if (match) {
+    const filePath = path.join(UPLOADS_DIR, match);
+    const ext = path.extname(match);
+    const mimeMap = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+    res.setHeader('Content-Type', mimeMap[ext] || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return fs.createReadStream(filePath).pipe(res);
+  }
+  res.status(404).json({ error: 'not found' });
+});
+
 // audio upload endpoint
 app.post('/api/audio/upload', uploadAudio.single('audio'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });
@@ -344,11 +379,13 @@ io.on('connection', (socket) => {
       userId,
       stations: currentRoom.stations.map(s => ({
         id: s.id, name: s.name, x: s.x, y: s.y,
+        lat: s.lat, lng: s.lng,
         reach: s.reach, hasAudio: s.hasAudio, live: s.live,
-        owner: s.owner, type: s.type, audioFileId: s.audioFileId || null,
-        avatarUrl: s.avatarUrl || null
+        owner: s.owner, type: s.type, audioFileId: s.audioFileId || null
       })),
       notes: currentRoom.notes,
+      photos: currentRoom.photos,
+      drawings: currentRoom.drawings,
       zines: currentRoom.zines.map(z => ({ id: z.id, title: z.title, x: z.x, y: z.y, owner: z.owner, pages: z.pages })),
       users: [...currentRoom.users.values()].map(u => ({ id: u.id, name: u.name, x: u.x, y: u.y, avatarUrl: u.avatarUrl || null }))
     });
@@ -372,6 +409,7 @@ io.on('connection', (socket) => {
       id: 'st_' + (idSeq++),
       name: data.name || 'untitled station',
       x: data.x, y: data.y,
+      lat: data.lat, lng: data.lng,
       reach: data.reach || 460,
       hasAudio: false,
       live: false,
@@ -459,6 +497,7 @@ io.on('connection', (socket) => {
       id: 'n_' + (idSeq++),
       text: (data.text || '').slice(0, 280),
       x: data.x, y: data.y,
+      lat: data.lat, lng: data.lng,
       author: userName,
       owner: userId,
       time
@@ -498,6 +537,55 @@ io.on('connection', (socket) => {
     }
     currentRoom.zines = currentRoom.zines.filter(z => z.id !== zineId);
     io.to(currentRoom.id).emit('zine-removed', zineId);
+  });
+
+  // photos
+  socket.on('place-photo', (data) => {
+    if (!currentRoom || !userId) return;
+    const photo = {
+      id: 'p_' + (idSeq++),
+      fileId: data.fileId,
+      caption: (data.caption || '').slice(0, 200),
+      lat: data.lat, lng: data.lng,
+      author: userName,
+      owner: userId,
+      time: new Date().toISOString()
+    };
+    currentRoom.photos.push(photo);
+    io.to(currentRoom.id).emit('photo-placed', photo);
+  });
+
+  socket.on('remove-photo', (photoId) => {
+    if (!currentRoom) return;
+    const photo = currentRoom.photos.find(p => p.id === photoId);
+    if (photo && photo.fileId) {
+      const dir = fs.readdirSync(UPLOADS_DIR);
+      const match = dir.find(f => f.startsWith(photo.fileId));
+      if (match) fs.unlink(path.join(UPLOADS_DIR, match), () => {});
+    }
+    currentRoom.photos = currentRoom.photos.filter(p => p.id !== photoId);
+    io.to(currentRoom.id).emit('photo-removed', photoId);
+  });
+
+  // drawings (SVG path data)
+  socket.on('place-drawing', (data) => {
+    if (!currentRoom || !userId) return;
+    const drawing = {
+      id: 'd_' + (idSeq++),
+      paths: data.paths,
+      lat: data.lat, lng: data.lng,
+      author: userName,
+      owner: userId,
+      time: new Date().toISOString()
+    };
+    currentRoom.drawings.push(drawing);
+    io.to(currentRoom.id).emit('drawing-placed', drawing);
+  });
+
+  socket.on('remove-drawing', (drawingId) => {
+    if (!currentRoom) return;
+    currentRoom.drawings = currentRoom.drawings.filter(d => d.id !== drawingId);
+    io.to(currentRoom.id).emit('drawing-removed', drawingId);
   });
 
   socket.on('disconnect', () => {
