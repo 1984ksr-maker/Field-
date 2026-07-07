@@ -165,6 +165,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
   animation:you-ping 2s cubic-bezier(0,0,.2,1) infinite;opacity:0}
 @keyframes you-ping{0%{transform:scale(.5);opacity:.6}100%{transform:scale(2);opacity:0}}
 
+/* PLAYER BAR */
+.player-bar{position:fixed;bottom:var(--toolbar-h);left:0;right:0;height:48px;z-index:900;
+  background:var(--fg);color:var(--bg);display:none;align-items:center;padding:0 16px;gap:12px;
+  font-family:var(--mono);font-size:11px}
+.player-bar.visible{display:flex}
+.player-bar .pb-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;letter-spacing:.02em}
+.player-bar .pb-btn{width:32px;height:32px;border:1px solid rgba(255,255,255,.2);background:transparent;
+  color:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  transition:all .15s}
+.player-bar .pb-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4)}
+.player-bar .pb-btn.active{background:rgba(255,255,255,.15);border-color:var(--bg)}
+.player-bar .pb-btn svg{width:14px;height:14px;fill:currentColor;stroke:none}
+.player-bar .pb-vol{width:60px;height:3px;-webkit-appearance:none;appearance:none;background:rgba(255,255,255,.2);
+  outline:none;cursor:pointer}
+.player-bar .pb-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--bg);border-radius:50%}
+.player-bar .pb-close{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:16px;
+  padding:0 4px;margin-left:4px}
+.player-bar .pb-close:hover{color:var(--bg)}
+
 /* RESPONSIVE */
 @media(max-width:600px){
   .tb-btn span{display:none}
@@ -189,6 +208,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
 <!-- MAP -->
 <div id="map"></div>
+
+<!-- PLAYER BAR -->
+<div class="player-bar" id="playerBar">
+  <button class="pb-btn" id="pbPlay" onclick="pbToggle()">
+    <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+  </button>
+  <button class="pb-btn" onclick="pbStop()">
+    <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg>
+  </button>
+  <span class="pb-title" id="pbTitle">Subversive Radio</span>
+  <input type="range" class="pb-vol" min="0" max="100" value="80" oninput="pbVol(this.value)">
+  <button class="pb-close" onclick="pbClose()">&times;</button>
+</div>
 
 <!-- TOOLBAR -->
 <div class="toolbar" id="toolbar">
@@ -788,16 +820,70 @@ function saveDraw() {
   S.pendingLatLng = null;
 }
 
-// ---- RADIO ------------------------------------------------------------------
-let radioAudio = null;
-function openRadio() {
+// ---- PLAYER BAR -------------------------------------------------------------
+let pbAudio = null;
+let pbSource = null;
+
+function showPlayer(title, src) {
   ensureAudio();
-  if (radioAudio) { radioAudio.paused ? radioAudio.play().catch(()=>{}) : radioAudio.pause(); return; }
-  radioAudio = new Audio('/api/radio/stream');
-  radioAudio.volume = 0.8;
-  radioAudio.play().catch(() => {});
-  showToast('Subversive Radio playing');
-  setTimeout(hideToast, 2000);
+  if (pbAudio && pbSource === src) { pbToggle(); return; }
+  if (pbAudio) { pbAudio.pause(); pbAudio.src = ''; }
+  pbAudio = new Audio(src);
+  pbAudio.volume = 0.8;
+  pbSource = src;
+  document.getElementById('pbTitle').textContent = title;
+  document.getElementById('playerBar').classList.add('visible');
+  document.getElementById('map').style.bottom = 'calc(var(--toolbar-h) + 48px)';
+  pbAudio.play().catch(() => {});
+  updatePbIcon();
+  pbAudio.addEventListener('play', updatePbIcon);
+  pbAudio.addEventListener('pause', updatePbIcon);
+}
+
+function updatePbIcon() {
+  const btn = document.getElementById('pbPlay');
+  if (pbAudio && !pbAudio.paused) {
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>';
+    btn.classList.add('active');
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+    btn.classList.remove('active');
+  }
+}
+
+function pbToggle() {
+  if (!pbAudio) return;
+  if (pbAudio.paused) {
+    if (pbSource && pbSource.includes('/stream')) {
+      pbAudio.src = pbSource;
+      pbAudio.load();
+    }
+    pbAudio.play().catch(() => {});
+  } else {
+    pbAudio.pause();
+  }
+}
+
+function pbStop() {
+  if (!pbAudio) return;
+  pbAudio.pause();
+  pbAudio.currentTime = 0;
+  updatePbIcon();
+}
+
+function pbVol(val) {
+  if (pbAudio) pbAudio.volume = val / 100;
+}
+
+function pbClose() {
+  if (pbAudio) { pbAudio.pause(); pbAudio.src = ''; pbAudio = null; pbSource = null; }
+  document.getElementById('playerBar').classList.remove('visible');
+  document.getElementById('map').style.bottom = 'var(--toolbar-h)';
+}
+
+// ---- RADIO ------------------------------------------------------------------
+function openRadio() {
+  showPlayer('Subversive Radio', '/api/radio/stream');
 }
 
 // ---- LIVE PCM ---------------------------------------------------------------
