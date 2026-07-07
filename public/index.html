@@ -198,6 +198,43 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
   z-index:3000;display:none;letter-spacing:.02em}
 .upload-toast.visible{display:block}
 
+/* RECORDER PANEL */
+.rec-panel{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1500;display:none;flex-direction:column;background:var(--bg)}
+.rec-panel.open{display:flex}
+.rec-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;
+  border-bottom:1px solid var(--card-border);flex-shrink:0}
+.rec-header-title{font-size:14px;font-weight:500;letter-spacing:.02em}
+.rec-header-time{font-family:var(--mono);font-size:24px;letter-spacing:.04em;color:var(--fg)}
+.rec-header-time.recording{color:#e00}
+.rec-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px 8px}
+.rec-close:hover{color:var(--fg)}
+.rec-wave-wrap{flex:1;position:relative;overflow:hidden;background:#fafafa;border-bottom:1px solid var(--card-border)}
+.rec-wave-canvas{width:100%;height:100%;display:block}
+.rec-controls{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;flex-shrink:0;
+  background:var(--card-bg);border-bottom:1px solid var(--card-border)}
+.rec-btn{width:48px;height:48px;border-radius:50%;border:2px solid var(--card-border);background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.rec-btn:hover,.rec-btn:active{border-color:var(--fg)}
+.rec-btn svg{width:20px;height:20px;fill:var(--fg);stroke:none}
+.rec-btn.rec-record{border-color:#e00;background:rgba(224,0,0,.05)}
+.rec-btn.rec-record.active{background:#e00;border-color:#e00}
+.rec-btn.rec-record.active svg{fill:#fff}
+.rec-btn:disabled{opacity:.3;cursor:default}
+.rec-zoom{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
+.rec-zoom label{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase}
+.rec-zoom input[type=range]{width:80px;height:4px;-webkit-appearance:none;appearance:none;background:#e0e0e0;outline:none}
+.rec-zoom input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--fg);border-radius:50%}
+.rec-status{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+  padding:0 16px;flex-shrink:0}
+.rec-bottom{display:flex;align-items:center;gap:8px;padding:10px 16px;flex-shrink:0;background:var(--card-bg)}
+.rec-bottom button{height:36px;padding:0 20px;border:1px solid var(--fg);background:var(--fg);color:var(--bg);
+  font-family:var(--font);font-size:11px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s}
+.rec-bottom button:hover{background:transparent;color:var(--fg)}
+.rec-bottom button.secondary{background:transparent;color:var(--fg)}
+.rec-bottom button.secondary:hover{background:var(--fg);color:var(--bg)}
+.rec-bottom button:disabled{opacity:.3;cursor:default}
+
 /* YOU MARKER */
 .you-marker{background:none!important;border:none!important}
 .you-dot{width:12px;height:12px;background:var(--fg);border-radius:50%;position:relative;
@@ -382,6 +419,42 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
   </div>
   <canvas class="draw-canvas" id="drawCanvas"></canvas>
   <div class="sep-preview" id="sepPreview"></div>
+</div>
+
+<!-- RECORDER PANEL -->
+<div class="rec-panel" id="recPanel">
+  <div class="rec-header">
+    <span class="rec-header-title">Recorder</span>
+    <span class="rec-header-time" id="recTime">0:00</span>
+    <button class="rec-close" onclick="closeRecorder()">&times;</button>
+  </div>
+  <div class="rec-wave-wrap">
+    <canvas class="rec-wave-canvas" id="recWaveCanvas"></canvas>
+  </div>
+  <div class="rec-controls">
+    <button class="rec-btn rec-record" id="recRecordBtn" onclick="recToggleRecord()" title="Record">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+    </button>
+    <button class="rec-btn" id="recPauseBtn" onclick="recPause()" disabled title="Pause">
+      <svg viewBox="0 0 24 24"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+    </button>
+    <button class="rec-btn" id="recStopBtn" onclick="recStop()" disabled title="Stop">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg>
+    </button>
+    <button class="rec-btn" id="recPlayBtn" onclick="recPlayback()" disabled title="Play">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <div class="rec-zoom">
+      <label>Zoom</label>
+      <input type="range" id="recZoom" min="1" max="10" value="1" step="0.5" oninput="recUpdateZoom()">
+    </div>
+  </div>
+  <div class="rec-bottom">
+    <span class="rec-status" id="recStatus">ready</span>
+    <div style="flex:1"></div>
+    <button class="secondary" onclick="closeRecorder()">Cancel</button>
+    <button id="recUploadBtn" onclick="recUpload()" disabled>Upload &amp; Place</button>
+  </div>
 </div>
 
 <!-- UPLOAD TOAST -->
@@ -782,43 +855,274 @@ document.getElementById('audioFileInput').addEventListener('change', async e => 
 
 // ---- RECORDER ---------------------------------------------------------------
 let recState = null;
+let recChunks = [];
+let recBlob = null;
+let recPlayAudio = null;
+let recAnalyser = null;
+let recWaveData = [];
+let recAnimFrame = null;
+let recTimerInterval = null;
+let recZoomLevel = 1;
+let recStartTime = 0;
+let recPausedTime = 0;
+
 function openRecorder() {
   ensureAudio();
+  document.getElementById('recPanel').classList.add('open');
+  document.getElementById('recTime').textContent = '0:00';
+  document.getElementById('recTime').classList.remove('recording');
+  document.getElementById('recStatus').textContent = 'ready';
+  document.getElementById('recPauseBtn').disabled = true;
+  document.getElementById('recStopBtn').disabled = true;
+  document.getElementById('recPlayBtn').disabled = true;
+  document.getElementById('recUploadBtn').disabled = true;
+  document.getElementById('recRecordBtn').classList.remove('active');
+  recBlob = null;
+  recChunks = [];
+  recWaveData = [];
+  recZoomLevel = 1;
+  document.getElementById('recZoom').value = 1;
+  const canvas = document.getElementById('recWaveCanvas');
+  requestAnimationFrame(() => {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  });
+}
+
+function closeRecorder() {
   if (recState) {
     recState.recorder.stop();
-    hideToast();
+    recState.stream.getTracks().forEach(t => t.stop());
+    recState = null;
+  }
+  if (recPlayAudio) { recPlayAudio.pause(); recPlayAudio = null; }
+  if (recAnimFrame) { cancelAnimationFrame(recAnimFrame); recAnimFrame = null; }
+  if (recTimerInterval) { clearInterval(recTimerInterval); recTimerInterval = null; }
+  document.getElementById('recPanel').classList.remove('open');
+}
+
+function recToggleRecord() {
+  if (recState && recState.recorder.state === 'recording') {
+    recState.recorder.pause();
+    document.getElementById('recRecordBtn').classList.remove('active');
+    document.getElementById('recStatus').textContent = 'paused';
+    document.getElementById('recTime').classList.remove('recording');
+    recPausedTime = Date.now();
+    clearInterval(recTimerInterval);
+    if (recAnimFrame) { cancelAnimationFrame(recAnimFrame); recAnimFrame = null; }
+    return;
+  }
+  if (recState && recState.recorder.state === 'paused') {
+    recState.recorder.resume();
+    document.getElementById('recRecordBtn').classList.add('active');
+    document.getElementById('recStatus').textContent = 'recording';
+    document.getElementById('recTime').classList.add('recording');
+    recStartTime += Date.now() - recPausedTime;
+    recTimerInterval = setInterval(updateRecTimer, 100);
+    drawRecWave();
     return;
   }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     const recorder = new MediaRecorder(stream);
-    const chunks = [];
-    recorder.ondataavailable = e => chunks.push(e.data);
-    recorder.onstop = async () => {
+    recChunks = [];
+    recWaveData = [];
+    recBlob = null;
+
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = actx.createMediaStreamSource(stream);
+    recAnalyser = actx.createAnalyser();
+    recAnalyser.fftSize = 256;
+    source.connect(recAnalyser);
+
+    recorder.ondataavailable = e => recChunks.push(e.data);
+    recorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
-      const blob = new Blob(chunks, { type: recorder.mimeType });
-      showToast('uploading recording...');
-      const fd = new FormData();
-      fd.append('audio', blob, 'recording.webm');
-      const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      hideToast();
-      if (data.fileId) {
-        const ll = S.pendingLatLng || S.map.getCenter();
-        socket.emit('place-station', { name: 'recording ' + new Date().toLocaleTimeString(), x: 0, y: 0, lat: ll.lat, lng: ll.lng });
-        const handler = st => {
-          if (st.owner !== S.userId) return;
-          socket.off('station-placed', handler);
-          socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
-        };
-        socket.on('station-placed', handler);
-      }
+      recBlob = new Blob(recChunks, { type: recorder.mimeType });
+      document.getElementById('recPlayBtn').disabled = false;
+      document.getElementById('recUploadBtn').disabled = false;
+      document.getElementById('recStatus').textContent = 'stopped — ready to upload';
+      document.getElementById('recRecordBtn').classList.remove('active');
+      document.getElementById('recTime').classList.remove('recording');
+      document.getElementById('recPauseBtn').disabled = true;
+      document.getElementById('recStopBtn').disabled = true;
+      clearInterval(recTimerInterval);
+      if (recAnimFrame) { cancelAnimationFrame(recAnimFrame); recAnimFrame = null; }
+      actx.close();
       recState = null;
-      S.pendingLatLng = null;
+      drawRecWaveStatic();
     };
-    recorder.start();
-    recState = { recorder, stream, start: Date.now() };
-    showToast('recording... click Record again to stop');
+
+    recorder.start(100);
+    recState = { recorder, stream, actx };
+    recStartTime = Date.now();
+    recPausedTime = 0;
+
+    document.getElementById('recRecordBtn').classList.add('active');
+    document.getElementById('recPauseBtn').disabled = false;
+    document.getElementById('recStopBtn').disabled = false;
+    document.getElementById('recPlayBtn').disabled = true;
+    document.getElementById('recUploadBtn').disabled = true;
+    document.getElementById('recStatus').textContent = 'recording';
+    document.getElementById('recTime').classList.add('recording');
+
+    recTimerInterval = setInterval(updateRecTimer, 100);
+    drawRecWave();
   }).catch(() => { alert('Microphone access denied'); });
+}
+
+function recPause() {
+  if (!recState) return;
+  if (recState.recorder.state === 'recording') {
+    recState.recorder.pause();
+    document.getElementById('recRecordBtn').classList.remove('active');
+    document.getElementById('recStatus').textContent = 'paused';
+    document.getElementById('recTime').classList.remove('recording');
+    recPausedTime = Date.now();
+    clearInterval(recTimerInterval);
+    if (recAnimFrame) { cancelAnimationFrame(recAnimFrame); recAnimFrame = null; }
+  } else if (recState.recorder.state === 'paused') {
+    recState.recorder.resume();
+    document.getElementById('recRecordBtn').classList.add('active');
+    document.getElementById('recStatus').textContent = 'recording';
+    document.getElementById('recTime').classList.add('recording');
+    recStartTime += Date.now() - recPausedTime;
+    recTimerInterval = setInterval(updateRecTimer, 100);
+    drawRecWave();
+  }
+}
+
+function recStop() {
+  if (!recState) return;
+  recState.recorder.stop();
+}
+
+function updateRecTimer() {
+  const elapsed = Date.now() - recStartTime;
+  const s = Math.floor(elapsed / 1000);
+  const m = Math.floor(s / 60);
+  document.getElementById('recTime').textContent = m + ':' + (s % 60).toString().padStart(2, '0');
+}
+
+function drawRecWave() {
+  if (!recAnalyser) return;
+  const canvas = document.getElementById('recWaveCanvas');
+  const ctx = canvas.getContext('2d');
+  const bufLen = recAnalyser.frequencyBinCount;
+  const data = new Uint8Array(bufLen);
+
+  function frame() {
+    recAnalyser.getByteTimeDomainData(data);
+    const avg = data.reduce((a, b) => a + Math.abs(b - 128), 0) / bufLen;
+    recWaveData.push(avg);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const total = recWaveData.length;
+    const zoom = recZoomLevel;
+    const visible = Math.floor(canvas.width / (2 * zoom));
+    const start = Math.max(0, total - visible);
+
+    ctx.fillStyle = '#e00';
+    ctx.globalAlpha = 0.7;
+    const barW = Math.max(1, 2 * zoom);
+    for (let i = start; i < total; i++) {
+      const x = (i - start) * barW;
+      const h = Math.max(1, (recWaveData[i] / 128) * canvas.height * 0.8);
+      ctx.fillRect(x, (canvas.height - h) / 2, Math.max(1, barW - 1), h);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    recAnimFrame = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function drawRecWaveStatic() {
+  const canvas = document.getElementById('recWaveCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fafafa';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (recWaveData.length === 0) return;
+  const total = recWaveData.length;
+  const zoom = recZoomLevel;
+  const barW = Math.max(1, (canvas.width / total) * zoom);
+  const visible = Math.floor(canvas.width / barW);
+  const start = Math.max(0, total - visible);
+
+  ctx.fillStyle = '#111';
+  ctx.globalAlpha = 0.5;
+  for (let i = start; i < total; i++) {
+    const x = (i - start) * barW;
+    const h = Math.max(1, (recWaveData[i] / 128) * canvas.height * 0.8);
+    ctx.fillRect(x, (canvas.height - h) / 2, Math.max(1, barW - 1), h);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height / 2);
+  ctx.lineTo(canvas.width, canvas.height / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function recUpdateZoom() {
+  recZoomLevel = parseFloat(document.getElementById('recZoom').value);
+  if (!recState || recState.recorder.state !== 'recording') drawRecWaveStatic();
+}
+
+function recPlayback() {
+  if (!recBlob) return;
+  if (recPlayAudio && !recPlayAudio.paused) {
+    recPlayAudio.pause();
+    recPlayAudio.currentTime = 0;
+    document.getElementById('recStatus').textContent = 'stopped — ready to upload';
+    return;
+  }
+  recPlayAudio = new Audio(URL.createObjectURL(recBlob));
+  recPlayAudio.play().catch(() => {});
+  document.getElementById('recStatus').textContent = 'playing back...';
+  recPlayAudio.onended = () => {
+    document.getElementById('recStatus').textContent = 'stopped — ready to upload';
+  };
+}
+
+async function recUpload() {
+  if (!recBlob) return;
+  showToast('uploading recording...');
+  const fd = new FormData();
+  fd.append('audio', recBlob, 'recording.webm');
+  const res = await fetch('/api/audio/upload', { method: 'POST', body: fd });
+  const data = await res.json();
+  hideToast();
+  if (data.fileId) {
+    const ll = S.pendingLatLng || S.map.getCenter();
+    socket.emit('place-station', { name: 'recording ' + new Date().toLocaleTimeString(), x: 0, y: 0, lat: ll.lat, lng: ll.lng });
+    const handler = st => {
+      if (st.owner !== S.userId) return;
+      socket.off('station-placed', handler);
+      socket.emit('station-audio', { stationId: st.id, audioFileId: data.fileId });
+    };
+    socket.on('station-placed', handler);
+  }
+  closeRecorder();
+  S.pendingLatLng = null;
 }
 
 // ---- DRAWING ----------------------------------------------------------------
