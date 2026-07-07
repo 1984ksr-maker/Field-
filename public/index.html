@@ -139,13 +139,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 /* DRAW CANVAS OVERLAY */
 .draw-overlay{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1500;display:none;background:rgba(255,255,255,.85)}
 .draw-overlay.open{display:block}
-.draw-toolbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:1px;
-  background:var(--card-bg);border:1px solid var(--card-border);box-shadow:var(--shadow)}
-.draw-toolbar button{height:36px;padding:0 14px;border:none;background:transparent;font-family:var(--font);
-  font-size:11px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.draw-toolbar{position:absolute;top:0;left:0;right:0;display:flex;gap:0;justify-content:center;
+  background:var(--card-bg);border-bottom:1px solid var(--card-border);box-shadow:var(--shadow);z-index:10;padding:6px 4px;flex-wrap:wrap}
+.draw-toolbar button{height:32px;padding:0 10px;border:none;background:transparent;font-family:var(--font);
+  font-size:10px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .draw-toolbar button:hover{color:var(--fg)}
 .draw-toolbar button.active{color:var(--fg);background:var(--bg)}
-.draw-canvas{position:absolute;inset:0;cursor:crosshair}
+.draw-canvas{position:absolute;top:60px;left:0;right:0;bottom:0;cursor:crosshair}
 
 /* RECORDER */
 .rec-circle{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;position:relative}
@@ -725,8 +725,8 @@ function openDrawOverlay() {
   const overlay = document.getElementById('drawOverlay');
   overlay.classList.add('open');
   const canvas = document.getElementById('drawCanvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 56;
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawPaths = [];
