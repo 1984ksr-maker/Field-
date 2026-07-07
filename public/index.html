@@ -655,6 +655,7 @@ function addNotePin(n) {
   </div></div>`;
   marker.bindPopup(html, { maxWidth: 300 });
   pins.set(n.id, { marker, type: 'note', data: n });
+  if (n.owner === S.userId) { panToPin(marker, ll); }
 }
 
 function addPhotoPin(p) {
@@ -668,6 +669,7 @@ function addPhotoPin(p) {
     </div></div>`;
   marker.bindPopup(html, { maxWidth: 320 });
   pins.set(p.id, { marker, type: 'photo', data: p });
+  if (p.owner === S.userId) { panToPin(marker, ll); }
 }
 
 function addAudioPin(st) {
@@ -756,6 +758,7 @@ function addDrawingPin(d) {
   </div></div>`;
   marker.bindPopup(html, { maxWidth: 320 });
   pins.set(d.id, { marker, type: 'drawing', data: d });
+  if (d.owner === S.userId) { panToPin(marker, ll); }
 }
 
 function updatePinIcon(p) {
@@ -770,6 +773,18 @@ function removePin(id) {
   const audio = audioPlayers.get(id);
   if (audio) { audio.pause(); audio.src = ''; audioPlayers.delete(id); }
   pins.delete(id);
+}
+
+function panToPin(marker, ll) {
+  setTimeout(() => {
+    S.map.invalidateSize();
+    try {
+      S.map.setView(ll, Math.max(S.map.getZoom(), 14), { animate: true });
+    } catch(e) {
+      S.map.setView(ll, 14);
+    }
+    setTimeout(() => marker.openPopup(), 400);
+  }, 200);
 }
 
 // ---- ACTIONS ----------------------------------------------------------------
