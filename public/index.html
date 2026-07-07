@@ -50,17 +50,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 /* TOOLBAR */
 .toolbar{position:fixed;bottom:0;left:0;right:0;height:var(--toolbar-h);z-index:1000;
   background:var(--card-bg);border-top:1px solid var(--card-border);
-  display:none;align-items:center;justify-content:center;gap:1px;padding:0 16px}
+  display:none;align-items:center;gap:1px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .toolbar.visible{display:flex}
-.tb-btn{height:40px;padding:0 16px;border:none;background:transparent;font-family:var(--font);font-size:11px;
+.toolbar::-webkit-scrollbar{display:none}
+.tb-btn{height:40px;padding:0 12px;border:none;background:transparent;font-family:var(--font);font-size:11px;
   color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.04em;
-  text-transform:uppercase;transition:color .15s;position:relative;white-space:nowrap}
-.tb-btn:hover{color:var(--fg)}
+  text-transform:uppercase;transition:color .15s;position:relative;white-space:nowrap;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tb-btn:hover,.tb-btn:active{color:var(--fg)}
 .tb-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.tb-sep{width:1px;height:20px;background:var(--card-border);margin:0 8px}
+.tb-sep{width:1px;height:20px;background:var(--card-border);margin:0 4px;flex-shrink:0}
 .tb-info{margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--mono);
   display:flex;align-items:center;gap:12px;letter-spacing:.02em;flex-shrink:0}
-.tb-brand{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin-right:16px;flex-shrink:0}
+.tb-brand{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin-right:8px;flex-shrink:0}
 
 /* LIVE PILL */
 .live-pill{display:none;align-items:center;gap:5px;padding:4px 10px;background:#1a1a1a;color:#fff;
@@ -137,15 +139,54 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 .modal-submit:hover{background:transparent;color:var(--fg)}
 
 /* DRAW CANVAS OVERLAY */
-.draw-overlay{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1500;display:none;background:rgba(255,255,255,.85)}
-.draw-overlay.open{display:block}
-.draw-toolbar{position:absolute;top:0;left:0;right:0;display:flex;gap:0;justify-content:center;
-  background:var(--card-bg);border-bottom:1px solid var(--card-border);box-shadow:var(--shadow);z-index:10;padding:6px 4px;flex-wrap:wrap}
+.draw-overlay{position:fixed;inset:0;bottom:var(--toolbar-h);z-index:1500;display:none;background:rgba(255,255,255,.95)}
+.draw-overlay.open{display:flex;flex-direction:column}
+.draw-toolbar{display:flex;gap:0;justify-content:center;align-items:center;
+  background:var(--card-bg);border-bottom:1px solid var(--card-border);box-shadow:var(--shadow);z-index:10;padding:6px 4px;flex-wrap:wrap;flex-shrink:0}
 .draw-toolbar button{height:32px;padding:0 10px;border:none;background:transparent;font-family:var(--font);
-  font-size:10px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.draw-toolbar button:hover{color:var(--fg)}
+  font-size:10px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.draw-toolbar button:hover,.draw-toolbar button:active{color:var(--fg)}
 .draw-toolbar button.active{color:var(--fg);background:var(--bg)}
-.draw-canvas{position:absolute;top:60px;left:0;right:0;bottom:0;cursor:crosshair}
+
+/* COLOR PALETTE BAR */
+.draw-colors{display:flex;gap:0;align-items:center;background:var(--card-bg);border-bottom:1px solid var(--card-border);
+  padding:6px 8px;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.draw-colors::-webkit-scrollbar{display:none}
+.color-swatch{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;
+  margin:0 2px;transition:transform .1s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.color-swatch:hover{transform:scale(1.15)}
+.color-swatch.active{border-color:var(--fg);transform:scale(1.2)}
+.draw-sep{width:1px;height:20px;background:var(--card-border);margin:0 6px;flex-shrink:0}
+.draw-label{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+  margin:0 6px;flex-shrink:0;white-space:nowrap}
+
+/* RISO PANEL */
+.riso-panel{display:none;background:#f5f5f5;border-bottom:1px solid var(--card-border);padding:8px 12px;
+  flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.riso-panel.open{display:flex;align-items:center;gap:8px}
+.riso-panel::-webkit-scrollbar{display:none}
+.riso-btn{height:28px;padding:0 10px;border:1px solid var(--card-border);background:var(--card-bg);font-family:var(--font);
+  font-size:9px;cursor:pointer;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
+.riso-btn:hover,.riso-btn:active{color:var(--fg);border-color:var(--fg)}
+.riso-btn.active{color:var(--bg);background:var(--fg);border-color:var(--fg)}
+.offset-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.offset-ctrl label{font-size:9px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.offset-ctrl input[type=range]{width:60px;height:3px;-webkit-appearance:none;appearance:none;background:#ddd;outline:none}
+.offset-ctrl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--fg);border-radius:50%}
+
+/* SEPARATION PREVIEW */
+.sep-preview{display:none;position:absolute;inset:0;z-index:20;background:#fff;overflow:auto;padding:12px}
+.sep-preview.open{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:start}
+.sep-card{border:1px solid var(--card-border);background:#fff;text-align:center}
+.sep-card canvas{display:block;max-width:100%}
+.sep-card .sep-label{font-size:10px;font-family:var(--mono);padding:6px;text-transform:uppercase;letter-spacing:.04em}
+.sep-card .sep-actions{padding:0 6px 6px;display:flex;gap:4px;justify-content:center}
+.sep-card .sep-actions button{font-size:9px;font-family:var(--font);padding:4px 10px;border:1px solid var(--card-border);
+  background:transparent;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
+.sep-card .sep-actions button:hover{border-color:var(--fg);color:var(--fg)}
+
+.draw-canvas{flex:1;cursor:crosshair;min-height:0}
 
 /* RECORDER */
 .rec-circle{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;position:relative}
@@ -187,9 +228,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 /* RESPONSIVE */
 @media(max-width:600px){
   .tb-btn span{display:none}
-  .tb-btn{padding:0 10px}
+  .tb-btn{padding:0 10px;min-width:40px;justify-content:center}
   .tb-brand{display:none}
-  .tb-info{font-size:9px;gap:8px}
+  .tb-info{font-size:9px;gap:6px}
+  .tb-sep{margin:0 2px}
+  .player-bar{gap:8px;padding:0 10px}
+  .player-bar .pb-vol{width:50px;height:8px}
+  .player-bar .pb-vol::-webkit-slider-thumb{width:16px;height:16px}
+  .player-bar .pb-btn{width:36px;height:36px}
 }
 </style>
 </head>
@@ -305,10 +351,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <button data-size="8" onclick="setDrawSize(8,this)">Bold</button>
     <button onclick="undoDraw()">Undo</button>
     <button onclick="clearDraw()">Clear</button>
+    <button onclick="toggleRisoPanel()">Riso</button>
+    <button onclick="showSeparations()">Separate</button>
     <button onclick="saveDraw()" style="font-weight:600;color:var(--fg)">Save</button>
     <button onclick="cancelDraw()">Cancel</button>
   </div>
+  <div class="draw-colors" id="drawColors"></div>
+  <div class="riso-panel" id="risoPanel">
+    <span class="draw-label">Offset</span>
+    <div class="offset-ctrl">
+      <label>X</label>
+      <input type="range" id="risoOffX" min="-8" max="8" value="0" oninput="updateRisoOffset()">
+    </div>
+    <div class="offset-ctrl">
+      <label>Y</label>
+      <input type="range" id="risoOffY" min="-8" max="8" value="0" oninput="updateRisoOffset()">
+    </div>
+    <div class="draw-sep"></div>
+    <span class="draw-label">Blend</span>
+    <button class="riso-btn active" data-blend="multiply" onclick="setRisoBlend('multiply',this)">Multiply</button>
+    <button class="riso-btn" data-blend="screen" onclick="setRisoBlend('screen',this)">Screen</button>
+    <button class="riso-btn" data-blend="darken" onclick="setRisoBlend('darken',this)">Darken</button>
+    <div class="draw-sep"></div>
+    <span class="draw-label">Presets</span>
+    <button class="riso-btn" onclick="loadRisoPreset('classic')">Classic</button>
+    <button class="riso-btn" onclick="loadRisoPreset('tropical')">Tropical</button>
+    <button class="riso-btn" onclick="loadRisoPreset('mono')">Mono</button>
+    <button class="riso-btn" onclick="loadRisoPreset('cmyk')">CMYK</button>
+    <button class="riso-btn" onclick="saveColorPreset()">Save</button>
+  </div>
   <canvas class="draw-canvas" id="drawCanvas"></canvas>
+  <div class="sep-preview" id="sepPreview"></div>
 </div>
 
 <!-- UPLOAD TOAST -->
@@ -711,7 +784,11 @@ document.getElementById('audioFileInput').addEventListener('change', async e => 
 let recState = null;
 function openRecorder() {
   ensureAudio();
-  if (recState) return;
+  if (recState) {
+    recState.recorder.stop();
+    hideToast();
+    return;
+  }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     const recorder = new MediaRecorder(stream);
     const chunks = [];
@@ -741,54 +818,163 @@ function openRecorder() {
     recorder.start();
     recState = { recorder, stream, start: Date.now() };
     showToast('recording... click Record again to stop');
-  }).catch(() => {});
-  if (recState && recState.recorder.state === 'recording') {
-    recState.recorder.stop();
-    hideToast();
-  }
+  }).catch(() => { alert('Microphone access denied'); });
 }
 
 // ---- DRAWING ----------------------------------------------------------------
 let drawPaths = [];
 let drawCurrent = null;
 let drawSize = 2;
+let drawColor = '#111';
+let risoBlend = 'multiply';
+let risoOffX = 0, risoOffY = 0;
+
+const RISO_COLORS = [
+  { name:'Black', hex:'#111111' },
+  { name:'Crimson', hex:'#E4002B' },
+  { name:'Fluorescent Pink', hex:'#FF48B0' },
+  { name:'Hot Pink', hex:'#FF5EC6' },
+  { name:'Riso Red', hex:'#FF665E' },
+  { name:'Orange', hex:'#FF6C2F' },
+  { name:'Sunflower', hex:'#FFB511' },
+  { name:'Yellow', hex:'#FFE800' },
+  { name:'Light Lime', hex:'#E3ED55' },
+  { name:'Green', hex:'#00A95C' },
+  { name:'Teal', hex:'#00827F' },
+  { name:'Hunter Green', hex:'#407060' },
+  { name:'Federal Blue', hex:'#3D5588' },
+  { name:'Blue', hex:'#0078BF' },
+  { name:'Cornflower', hex:'#62A8E5' },
+  { name:'Aqua', hex:'#5EC8E5' },
+  { name:'Violet', hex:'#9D6DB5' },
+  { name:'Purple', hex:'#765BA7' },
+  { name:'Burgundy', hex:'#914E72' },
+  { name:'Brown', hex:'#925D25' },
+  { name:'Warm Grey', hex:'#928D88' },
+  { name:'Cool Grey', hex:'#A5AAA8' },
+  { name:'Metallic Gold', hex:'#AC936E' },
+  { name:'White', hex:'#FFFFFF' },
+];
+
+const RISO_PRESETS = {
+  classic: ['#FF48B0','#0078BF'],
+  tropical: ['#FF6C2F','#00A95C','#FFE800'],
+  mono: ['#111111'],
+  cmyk: ['#00BCD4','#E4002B','#FFE800','#111111'],
+};
+
+let savedPresets = [];
+try { savedPresets = JSON.parse(localStorage.getItem('cf_riso_presets') || '[]'); } catch(e){}
+
+function buildColorBar() {
+  const bar = document.getElementById('drawColors');
+  bar.innerHTML = '';
+  RISO_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (c.hex === drawColor ? ' active' : '');
+    sw.style.background = c.hex;
+    if (c.hex === '#FFFFFF') sw.style.border = '2px solid #ddd';
+    sw.title = c.name;
+    sw.onclick = () => {
+      drawColor = c.hex;
+      bar.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+    };
+    bar.appendChild(sw);
+  });
+  if (savedPresets.length) {
+    const sep = document.createElement('div');
+    sep.className = 'draw-sep';
+    bar.appendChild(sep);
+    const lbl = document.createElement('span');
+    lbl.className = 'draw-label';
+    lbl.textContent = 'Saved';
+    bar.appendChild(lbl);
+    savedPresets.forEach((preset, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'riso-btn';
+      btn.style.cssText = 'display:flex;gap:2px;align-items:center;padding:2px 6px;height:24px';
+      preset.forEach(hex => {
+        const dot = document.createElement('span');
+        dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${hex};display:inline-block`;
+        btn.appendChild(dot);
+      });
+      btn.onclick = () => applyPresetColors(preset);
+      bar.appendChild(btn);
+    });
+  }
+}
 
 function openDrawOverlay() {
   const overlay = document.getElementById('drawOverlay');
   overlay.classList.add('open');
+  document.getElementById('sepPreview').classList.remove('open');
+  buildColorBar();
+  drawColor = '#111';
+  risoOffX = 0; risoOffY = 0;
+  document.getElementById('risoOffX').value = 0;
+  document.getElementById('risoOffY').value = 0;
+
   const canvas = document.getElementById('drawCanvas');
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawPaths = [];
+  requestAnimationFrame(() => {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawPaths = [];
+  });
 
   canvas.onpointerdown = e => {
-    drawCurrent = { d: `M${e.offsetX} ${e.offsetY}`, w: drawSize, color: '#111', points: [[e.offsetX, e.offsetY]] };
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    drawCurrent = { w: drawSize, color: drawColor, points: [[x, y]] };
     canvas.setPointerCapture(e.pointerId);
   };
   canvas.onpointermove = e => {
     if (!drawCurrent) return;
-    drawCurrent.d += ` L${e.offsetX} ${e.offsetY}`;
-    drawCurrent.points.push([e.offsetX, e.offsetY]);
-    redrawCanvas(ctx, canvas);
+    const rect = canvas.getBoundingClientRect();
+    drawCurrent.points.push([e.clientX - rect.left, e.clientY - rect.top]);
+    redrawCanvas();
   };
   canvas.onpointerup = () => {
     if (drawCurrent) { drawPaths.push(drawCurrent); drawCurrent = null; }
   };
 }
 
-function redrawCanvas(ctx, canvas) {
+function redrawCanvas() {
+  const canvas = document.getElementById('drawCanvas');
+  const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  [...drawPaths, drawCurrent].filter(Boolean).forEach(p => {
-    ctx.beginPath();
-    p.points.forEach((pt, i) => { i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]); });
-    ctx.strokeStyle = p.color;
-    ctx.lineWidth = p.w;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+
+  const allPaths = [...drawPaths, drawCurrent].filter(Boolean);
+  const colorGroups = new Map();
+  allPaths.forEach(p => {
+    if (!colorGroups.has(p.color)) colorGroups.set(p.color, []);
+    colorGroups.get(p.color).push(p);
   });
+
+  colorGroups.forEach((paths, color) => {
+    const offX = color !== drawColor && risoOffX ? risoOffX * 0.5 : 0;
+    const offY = color !== drawColor && risoOffY ? risoOffY * 0.5 : 0;
+    ctx.save();
+    ctx.globalCompositeOperation = risoBlend === 'source-over' ? 'source-over' : risoBlend;
+    paths.forEach(p => {
+      ctx.beginPath();
+      p.points.forEach((pt, i) => {
+        i === 0 ? ctx.moveTo(pt[0] + offX, pt[1] + offY) : ctx.lineTo(pt[0] + offX, pt[1] + offY);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = p.w;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = risoBlend === 'multiply' ? 0.85 : 1;
+      ctx.stroke();
+    });
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function setDrawSize(size, btn) {
@@ -796,27 +982,181 @@ function setDrawSize(size, btn) {
   document.querySelectorAll('.draw-toolbar button[data-size]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
-function undoDraw() {
-  drawPaths.pop();
-  const canvas = document.getElementById('drawCanvas');
-  redrawCanvas(canvas.getContext('2d'), canvas);
-}
+function undoDraw() { drawPaths.pop(); redrawCanvas(); }
 function clearDraw() {
   drawPaths = [];
   const canvas = document.getElementById('drawCanvas');
   canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
-function cancelDraw() { document.getElementById('drawOverlay').classList.remove('open'); }
+function cancelDraw() {
+  document.getElementById('drawOverlay').classList.remove('open');
+  document.getElementById('risoPanel').classList.remove('open');
+  document.getElementById('sepPreview').classList.remove('open');
+}
+
+function toggleRisoPanel() {
+  document.getElementById('risoPanel').classList.toggle('open');
+}
+function setRisoBlend(mode, btn) {
+  risoBlend = mode;
+  document.querySelectorAll('.riso-panel button[data-blend]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  redrawCanvas();
+}
+function updateRisoOffset() {
+  risoOffX = parseInt(document.getElementById('risoOffX').value);
+  risoOffY = parseInt(document.getElementById('risoOffY').value);
+  redrawCanvas();
+}
+function loadRisoPreset(name) {
+  const colors = RISO_PRESETS[name];
+  if (!colors) return;
+  applyPresetColors(colors);
+}
+function applyPresetColors(colors) {
+  drawColor = colors[0];
+  buildColorBar();
+  document.querySelectorAll('.draw-colors .color-swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.style.background && sw.title &&
+      RISO_COLORS.find(c => c.hex === drawColor && c.name === sw.title));
+  });
+  const bar = document.getElementById('drawColors');
+  bar.querySelectorAll('.color-swatch').forEach(sw => {
+    const rc = RISO_COLORS.find(c => c.name === sw.title);
+    if (rc && rc.hex === drawColor) sw.classList.add('active');
+    else sw.classList.remove('active');
+  });
+}
+function saveColorPreset() {
+  const usedColors = [...new Set(drawPaths.map(p => p.color))];
+  if (usedColors.length === 0) { alert('Draw with at least one color first'); return; }
+  savedPresets.push(usedColors);
+  try { localStorage.setItem('cf_riso_presets', JSON.stringify(savedPresets)); } catch(e){}
+  buildColorBar();
+}
+
+// ---- CMYK SEPARATION --------------------------------------------------------
+function getUsedColors() {
+  const colors = new Map();
+  drawPaths.forEach(p => {
+    if (!colors.has(p.color)) {
+      const rc = RISO_COLORS.find(c => c.hex === p.color);
+      colors.set(p.color, rc ? rc.name : p.color);
+    }
+  });
+  return colors;
+}
+
+function showSeparations() {
+  if (drawPaths.length === 0) { alert('Nothing to separate — draw something first'); return; }
+  const used = getUsedColors();
+  const canvas = document.getElementById('drawCanvas');
+  const W = canvas.width, H = canvas.height;
+  const container = document.getElementById('sepPreview');
+  container.innerHTML = '';
+  container.classList.add('open');
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'riso-btn';
+  closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:5';
+  closeBtn.textContent = 'Back';
+  closeBtn.onclick = () => container.classList.remove('open');
+  container.appendChild(closeBtn);
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'riso-btn';
+  allBtn.style.cssText = 'position:absolute;top:8px;right:60px;z-index:5';
+  allBtn.textContent = 'Download All';
+  allBtn.onclick = () => downloadAllSeparations(used, W, H);
+  container.appendChild(allBtn);
+
+  used.forEach((name, hex) => {
+    const card = document.createElement('div');
+    card.className = 'sep-card';
+    const sepCanvas = document.createElement('canvas');
+    sepCanvas.width = W; sepCanvas.height = H;
+    sepCanvas.style.cssText = `width:${Math.min(300, W)}px;height:${Math.min(300, H) * (H/W)}px`;
+    const ctx = sepCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    drawPaths.filter(p => p.color === hex).forEach(p => {
+      ctx.beginPath();
+      p.points.forEach((pt, i) => { i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]); });
+      ctx.strokeStyle = hex;
+      ctx.lineWidth = p.w;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    });
+
+    card.appendChild(sepCanvas);
+    const label = document.createElement('div');
+    label.className = 'sep-label';
+    label.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${hex};vertical-align:middle;margin-right:4px;border:1px solid #ddd"></span>${name}`;
+    card.appendChild(label);
+
+    const actions = document.createElement('div');
+    actions.className = 'sep-actions';
+    const dlColor = document.createElement('button');
+    dlColor.textContent = 'Color PNG';
+    dlColor.onclick = () => downloadSep(sepCanvas, name, 'color');
+    const dlMono = document.createElement('button');
+    dlMono.textContent = 'Mono PNG';
+    dlMono.onclick = () => {
+      const mono = makeMonoCanvas(drawPaths.filter(p => p.color === hex), W, H);
+      downloadSep(mono, name, 'mono');
+    };
+    actions.appendChild(dlColor);
+    actions.appendChild(dlMono);
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+function makeMonoCanvas(paths, W, H) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  paths.forEach(p => {
+    ctx.beginPath();
+    p.points.forEach((pt, i) => { i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]); });
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = p.w;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  });
+  return c;
+}
+
+function downloadSep(canvas, name, type) {
+  const a = document.createElement('a');
+  a.download = `separation_${name.toLowerCase().replace(/\s+/g,'_')}_${type}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+function downloadAllSeparations(used, W, H) {
+  used.forEach((name, hex) => {
+    const c = makeMonoCanvas(drawPaths.filter(p => p.color === hex), W, H);
+    downloadSep(c, name, 'mono');
+  });
+}
+
 function saveDraw() {
   if (drawPaths.length === 0) return cancelDraw();
-  const scale = 300 / Math.max(window.innerWidth, window.innerHeight - 56);
+  const canvas = document.getElementById('drawCanvas');
+  const scale = 300 / Math.max(canvas.width, canvas.height);
   const normalized = drawPaths.map(p => ({
     d: p.points.map((pt, i) => (i === 0 ? 'M' : 'L') + (pt[0]*scale).toFixed(1) + ' ' + (pt[1]*scale).toFixed(1)).join(' '),
     w: p.w * scale, color: p.color
   }));
   const ll = S.pendingLatLng || S.map.getCenter();
   socket.emit('place-drawing', { paths: normalized, lat: ll.lat, lng: ll.lng });
-  document.getElementById('drawOverlay').classList.remove('open');
+  cancelDraw();
   S.pendingLatLng = null;
 }
 
